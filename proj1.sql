@@ -1,12 +1,14 @@
-CREATE DATABASE project_db;
-USE project_db;
+CREATE DATABASE proj1;
+USE proj1;
+
 -- User Table
 CREATE TABLE User (
     user_id INTEGER PRIMARY KEY AUTO_INCREMENT, 
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL
+    password VARCHAR(255) NOT NULL,
+    role ENUM('admin', 'faculty', 'student', 'ta') NOT NULL
 );
 
 -- Admin Table
@@ -27,40 +29,30 @@ CREATE TABLE ETextbook (
     textbook_id INTEGER PRIMARY KEY AUTO_INCREMENT,
     title VARCHAR(255) NOT NULL,
     admin_id INTEGER REFERENCES Admin(admin_id) ON DELETE SET NULL
-);
-
-CREATE TABLE ETextbook_Access (
-    etextbook_id INTEGER,
-    user_id INTEGER,
-    access_level ENUM('customize', 'view') NOT NULL,
-    PRIMARY KEY (etextbook_id, user_id),
-    FOREIGN KEY (etextbook_id) REFERENCES ETextbook(textbook_id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES User(user_id) ON DELETE CASCADE
+    faculty_id INTEGER REFERENCES Faculty(faculty_id) ON DELETE SET NULL
 );
 
 -- Course Table
 CREATE TABLE Course (
     course_id INTEGER PRIMARY KEY AUTO_INCREMENT,
     title VARCHAR(255) NOT NULL,
-    faculty_id INTEGER,
+    faculty_id INTEGER NOT NULL REFERENCES Faculty(faculty_id) ON DELETE SET NULL,
     start_date DATE NOT NULL,
     end_date DATE NOT NULL,
     course_type ENUM('active', 'evaluation') NOT NULL,
     course_token VARCHAR(7) NOT NULL,
     capacity INTEGER NOT NULL,
-    textbook_id INTEGER,
-    FOREIGN KEY (faculty_id) REFERENCES Faculty(faculty_id) ON DELETE SET NULL,
-    FOREIGN KEY (textbook_id) REFERENCES ETextbook(textbook_id) ON DELETE SET NULL
+    textbook_id INTEGER NOT NULL,
+    FOREIGN KEY (textbook_id) REFERENCES ETextbook(textbook_id),
+    FOREIGN KEY (faculty_id) REFERENCES User(user_id)
 );
 
 -- TeachingAssistant Table
 CREATE TABLE TeachingAssistant (
     teaching_assistant_id INTEGER PRIMARY KEY AUTO_INCREMENT,
     user_id INTEGER NOT NULL REFERENCES User(user_id) ON DELETE CASCADE,
-    course_id INTEGER NOT NULL REFERENCES Course(course_id) ON DELETE CASCADE,
-    FOREIGN KEY (teaching_assistant_id) REFERENCES User(user_id) ON DELETE CASCADE
+    course_id INTEGER NOT NULL REFERENCES Course(course_id) ON DELETE CASCADE
 );
-
 
 -- Student Table
 CREATE TABLE Student (
@@ -126,41 +118,41 @@ CREATE TABLE Activity (
 
 -- Score Table
 CREATE TABLE Score (
-    score_id INTEGER PRIMARY KEY AUTO_INCREMENT,
     score INTEGER NOT NULL,
     points INTEGER NOT NULL,
     activity_id INTEGER NOT NULL REFERENCES Activity(activity_id) ON DELETE CASCADE,
     student_id INTEGER NOT NULL REFERENCES Student(student_id) ON DELETE CASCADE,
-    timestamp TIMESTAMP NOT NULL
+    timestamp TIMESTAMP NOT NULL,
+    PRIMARY KEY (activity_id, student_id)
 );
 
--- Step 1: Insert a new user as an admin
-INSERT INTO User (first_name, last_name, email, password)
-VALUES ('Test', 'Admin', 'testadmin@example.com', 'adminpassword');
-
--- Step 2: Get the user_id of the new admin
-SELECT user_id FROM User WHERE email = 'testadmin@example.com';
-
--- Step 3: Use the retrieved user_id to insert into the Admin table
--- Assuming user_id obtained from previous step is, say, 1
-INSERT INTO Admin (admin_id) VALUES (1);
-
--- Add a sample faculty
-INSERT INTO User (first_name, last_name, email, password)
-VALUES ('Test', 'Faculty', 'testfaculty@example.com', 'facultypassword');
-
--- Get the user_id for the faculty user
-SELECT user_id FROM User WHERE email = 'testfaculty@example.com';
-
--- Assuming faculty's user_id is 2, add this to Faculty table
-INSERT INTO Faculty (faculty_id) VALUES (2);
-
--- Add a sample e-textbook with admin ownership
-INSERT INTO ETextbook (title, admin_id) VALUES ('Sample E-Textbook', 1);
-
--- Add a sample course linked to the sample faculty and e-textbook
-INSERT INTO Course (title, faculty_id, start_date, end_date, course_type, course_token, capacity, textbook_id)
-VALUES ('Sample Active Course', 2, '2024-01-01', '2024-06-01', 'active', 'ABC1234', 30, 1);
 
 
+-- -- 1st query
+-- -- Replace 'TextbookID' with the ID of a text book
+-- SELECT COUNT(*) AS NumberOfSections
+-- FROM section
+-- WHERE chapter_id = (
+--     SELECT chapter_id
+--     FROM chapter
+--     WHERE textbook_id = [TextbookID] AND chapter_number = 1
+-- );
 
+-- -- 2nd query:
+-- (SELECT 
+-- 	Course.title AS CourseTitle,
+-- 	CONCAT(User.first_name, ' ', User.last_name) AS UserName,
+-- 	User.role AS UserRole 
+-- FROM Faculty
+-- JOIN Course ON Faculty.faculty_id = Course.faculty_id
+-- JOIN User ON Faculty.faculty_id = User.user_id)
+
+-- UNION
+
+-- (SELECT 
+--     Course.title AS CourseTitle,
+--     CONCAT(User.first_name, ' ', User.last_name) AS UserName,
+--     User.role AS UserRole 
+-- FROM TeachingAssistant
+-- JOIN Course ON TeachingAssistant.course_id = Course.course_id
+-- JOIN User ON TeachingAssistant.user_id = User.user_id);
