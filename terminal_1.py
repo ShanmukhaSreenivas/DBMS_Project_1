@@ -299,7 +299,7 @@ def add_new_chapter(textbook_id):
                 """, (chapter_id, chapter_title, textbook_id, chapter_number))
                 conn.commit()
                 print("Chapter added successfully!")
-                add_new_section(chapter_id)  # Redirect to add new section function
+                add_new_section(chapter_id,textbook_id)  # Redirect to add new section function
                 return  # Go back to the previous page after section addition
             except mysql.connector.Error as err:
                 print(f"An error occurred: {err}")
@@ -320,7 +320,7 @@ def add_new_chapter(textbook_id):
         else:
             print("Invalid choice. Please select 1, 2, or 3.")
 
-def add_new_section(chapter_id):
+def add_new_section(chapter_id,textbook_id):
     while True:
         print(f"\n===== Add New Section to Chapter (ID: {chapter_id}) =====")
 
@@ -342,10 +342,10 @@ def add_new_section(chapter_id):
             cursor.close()
             conn.close()
 
-        section_id = input("Enter Unique Section ID:")
+        section_id = input("Enter Unique Section ID: ")
         section_number = input("Enter Section Number: ")
         section_title = input("Enter Section Title: ")
-        
+        textbook_id = textbook_id
 
         print("\n1. Add New Content Block")
         print("2. Go Back")
@@ -359,13 +359,15 @@ def add_new_section(chapter_id):
             cursor = conn.cursor()
             
             try:
-                # Insert the new chapter into the database
+                # Insert the new section into the database with textbook_id
                 cursor.execute("""
-                    INSERT INTO Section (section_id, title, chapter_id, section_number)
-                    VALUES (%s, %s, %s, %s)
-                """, (section_id, section_title, chapter_id, section_number))
+                    INSERT INTO Section (section_id, title, chapter_id, section_number, textbook_id)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (section_id, section_title, chapter_id, section_number, textbook_id))
                 conn.commit()
-                print("Chapter added successfully!")
+                print("Section added successfully!")
+                
+                # Redirect to add a new content block after adding the section
                 add_new_content_block(section_id)
                 return  # Return to previous menu after adding content block
             except mysql.connector.Error as err:
@@ -386,6 +388,73 @@ def add_new_section(chapter_id):
 
         else:
             print("Invalid choice. Please select 1, 2, or 3.")
+
+# def add_new_section(chapter_id):
+#     while True:
+#         print(f"\n===== Add New Section to Chapter (ID: {chapter_id}) =====")
+
+#         # Check if the chapter ID exists in the database
+#         conn = get_db_connection()
+#         cursor = conn.cursor()
+
+#         # Query to check if the chapter exists
+#         cursor.execute("SELECT * FROM Chapter WHERE chapter_id = %s", (chapter_id,))
+#         chapter = cursor.fetchone()
+
+#         if not chapter:
+#             print(f"Chapter with ID {chapter_id} does not exist. Please enter a valid Chapter ID.")
+#             cursor.close()
+#             conn.close()
+#             break  # Return to the previous menu
+#         else:
+#             print(f"Chapter with ID {chapter_id} found.")
+#             cursor.close()
+#             conn.close()
+
+#         section_id = input("Enter Unique Section ID:")
+#         section_number = input("Enter Section Number: ")
+#         section_title = input("Enter Section Title: ")
+        
+
+#         print("\n1. Add New Content Block")
+#         print("2. Go Back")
+#         print("3. Landing Page")
+#         choice = input("Enter choice (1-3): ")
+
+#         if choice == '1':
+#             # Redirect to add a new content block
+#             # Proceed to add a new section for the chapter
+#             conn = get_db_connection()
+#             cursor = conn.cursor()
+            
+#             try:
+#                 # Insert the new chapter into the database
+#                 cursor.execute("""
+#                     INSERT INTO Section (section_id, title, chapter_id, section_number)
+#                     VALUES (%s, %s, %s, %s)
+#                 """, (section_id, section_title, chapter_id, section_number))
+#                 conn.commit()
+#                 print("Chapter added successfully!")
+#                 add_new_content_block(section_id)
+#                 return  # Return to previous menu after adding content block
+#             except mysql.connector.Error as err:
+#                 print(f"An error occurred: {err}")
+#             finally:
+#                 cursor.close()
+#                 conn.close()
+
+#         elif choice == '2':
+#             # Go back to the previous page without saving
+#             print("Returning to the previous page...")
+#             return
+
+#         elif choice == '3':
+#             # Go back to the landing page without saving
+#             print("Returning to the Admin Landing Page...")
+#             return
+
+#         else:
+#             print("Invalid choice. Please select 1, 2, or 3.")
 
 
 def add_new_content_block(section_id):
@@ -707,7 +776,7 @@ def modify_chapter(textbook_id):
 
         if choice == '1':
             # Redirect to add new section
-            add_new_section(chapter_id)
+            add_new_section(chapter_id,textbook_id)
             return  # Return after handling section addition
 
         elif choice == '2':
@@ -1452,10 +1521,14 @@ def modify_chapter_faculty(course_id):
         # Input the unique Chapter ID
         chapter_id = input("Enter Unique Chapter ID: ")
 
-        # Check if the chapter ID exists in the database
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM Chapter WHERE chapter_id = %s", (chapter_id,))
+        cursor.execute("SELECT textbook_id FROM Course WHERE course_id = %s", (course_id))
+        textbook_id = cursor.fetchone()
+
+        # Check if the chapter ID exists in the database
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM Chapter WHERE chapter_id = %s AND textbook_id = %s", (chapter_id,textbook_id))
         chapter = cursor.fetchone()
 
         if not chapter:
@@ -1473,13 +1546,13 @@ def modify_chapter_faculty(course_id):
         choice = input("Enter choice (1-5): ")
 
         if choice == '1':
-            hide_chapter(chapter_id)
+            hide_chapter(chapter_id,textbook_id)
         elif choice == '2':
-            delete_chapter(chapter_id)
+            delete_chapter(chapter_id,textbook_id)
         elif choice == '3':
-            add_new_section_faculty(chapter_id)
+            add_new_section_faculty(chapter_id,textbook_id)
         elif choice == '4':
-            modify_section_faculty(chapter_id)
+            modify_section_faculty(chapter_id,textbook_id)
         elif choice == '5':
             print("Going back to the previous page...")
             break
@@ -1489,7 +1562,7 @@ def modify_chapter_faculty(course_id):
         cursor.close()
         conn.close()
 
-def hide_chapter(chapter_id):
+def hide_chapter(chapter_id,textbook_id):
     while True:
         print("\n===== Hide Chapter =====")
         print("1. Save")
@@ -1503,7 +1576,7 @@ def hide_chapter(chapter_id):
             cursor = conn.cursor()
             try:
                 # Mark chapter as hidden
-                cursor.execute("UPDATE Chapter SET hidden = TRUE WHERE chapter_id = %s", (chapter_id,))
+                cursor.execute("UPDATE Chapter SET hidden = TRUE WHERE chapter_id = %s AND textbook_id = %s", (chapter_id, textbook_id))
                 conn.commit()
                 print(f"Success: Chapter {chapter_id} has been hidden.")
             except mysql.connector.Error as err:
@@ -1519,7 +1592,7 @@ def hide_chapter(chapter_id):
             print("Invalid choice. Please enter 1 or 2.")
 
 
-def delete_chapter(chapter_id):
+def delete_chapter(chapter_id,textbook_id):
     while True:
         print("\n===== Delete Chapter =====")
         print("1. Save")
@@ -1533,7 +1606,7 @@ def delete_chapter(chapter_id):
             cursor = conn.cursor()
             try:
                 # Delete chapter
-                cursor.execute("DELETE FROM Chapter WHERE chapter_id = %s", (chapter_id,))
+                cursor.execute("DELETE FROM Chapter WHERE chapter_id = %s AND textbook_id = %s", (chapter_id, textbook_id))
                 conn.commit()
                 print(f"Success: Chapter {chapter_id} has been deleted.")
             except mysql.connector.Error as err:
@@ -1548,7 +1621,7 @@ def delete_chapter(chapter_id):
         else:
             print("Invalid choice. Please enter 1 or 2.")
 
-def add_new_section_faculty(chapter_id):
+def add_new_section_faculty(chapter_id,textbook_id):
     while True:
         print("\n===== Add New Section =====")
         section_number = input("Enter Section Number: ")
@@ -1565,7 +1638,7 @@ def add_new_section_faculty(chapter_id):
 
             try:
                 # Check if the section already exists
-                cursor.execute("SELECT * FROM Section WHERE section_number=%s AND chapter_id=%s", (section_number, chapter_id))
+                cursor.execute("SELECT * FROM Section WHERE section_number=%s AND chapter_id=%s AND textbook_id = %s", (section_number, chapter_id, textbook_id))
                 existing_section = cursor.fetchone()
 
                 if existing_section:
@@ -1573,9 +1646,9 @@ def add_new_section_faculty(chapter_id):
                 else:
                     # Insert the new section into the database with the correct column name
                     cursor.execute("""
-                        INSERT INTO Section (section_number, title, chapter_id)
+                        INSERT INTO Section (section_number, title, chapter_id,textbook_id)
                         VALUES (%s, %s, %s)
-                    """, (section_number, section_title, chapter_id))
+                    """, (section_number, section_title, chapter_id,textbook_id))
                     conn.commit()
                     print("Section created successfully! Redirecting to Add New Content Block...")
                     add_new_content_block_faculty(section_number)  # Redirect to add new content block
@@ -1593,7 +1666,7 @@ def add_new_section_faculty(chapter_id):
         else:
             print("Invalid choice. Please select 1 or 2.")
 
-def modify_section_faculty(chapter_id):
+def modify_section_faculty(chapter_id,textbook_id):
     while True:
         print("\n===== Modify Section =====")
         section_number = input("Enter Section Number: ")
@@ -1603,7 +1676,7 @@ def modify_section_faculty(chapter_id):
         cursor = conn.cursor()
 
         try:
-            cursor.execute("SELECT * FROM Section WHERE section_number=%s AND chapter_id=%s", (section_number, chapter_id))
+            cursor.execute("SELECT * FROM Section WHERE section_number=%s AND chapter_id=%s AND textbook_id = %s", (section_number, chapter_id, textbook_id))
             section = cursor.fetchone()
 
             if not section:

@@ -78,11 +78,12 @@ CREATE TABLE Notification (
 
 -- Chapter Table
 CREATE TABLE Chapter (
-    chapter_id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    chapter_id VARCHAR(100),
     title VARCHAR(255) NOT NULL,
     chapter_number INTEGER NOT NULL,
     textbook_id INTEGER NOT NULL REFERENCES ETextbook(textbook_id) ON DELETE CASCADE,
-    UNIQUE (textbook_id, chapter_number)
+    UNIQUE (textbook_id, chapter_number),
+    PRIMARY KEY (textbook_id, chapter_id)
 );
 
 -- Section Table
@@ -90,7 +91,8 @@ CREATE TABLE Section (
     section_id INTEGER PRIMARY KEY AUTO_INCREMENT,
     title VARCHAR(255) NOT NULL,
     section_number INTEGER NOT NULL,
-    chapter_id INTEGER NOT NULL REFERENCES Chapter(chapter_id) ON DELETE CASCADE,
+    chapter_id VARCHAR(100) NOT NULL REFERENCES Chapter(chapter_id) ON DELETE CASCADE,
+    textbook_id INTEGER NOT NULL REFERENCES ETextbook(textbook_id) ON DELETE CASCADE,
     UNIQUE (chapter_id, section_number)
 );
 
