@@ -4,10 +4,10 @@ from datetime import datetime
 # Database connection function
 def get_db_connection():
     return mysql.connector.connect(
-        host="127.0.0.1",
+        host="127.0.0.3306",
         user="root",  # Replace with your username
-        password="Raja@1101",  # Replace with your password
-        database="blah"  # Replace with your database name
+        password="kemaforogan",  # Replace with your password
+        database="proj1"  # Replace with your database name
     )
 
 def start_menu():
