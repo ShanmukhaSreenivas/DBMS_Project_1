@@ -3,7 +3,7 @@ USE proj1;
 
 -- User Table
 CREATE TABLE User (
-    user_id INTEGER PRIMARY KEY AUTO_INCREMENT, 
+    user_id VARCHAR(50) PRIMARY KEY, 
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
@@ -13,13 +13,13 @@ CREATE TABLE User (
 
 -- Admin Table
 CREATE TABLE Admin (
-    admin_id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    admin_id VARCHAR(50) PRIMARY KEY,
     FOREIGN KEY (admin_id) REFERENCES User(user_id) ON DELETE CASCADE
 );
 
 -- Faculty Table
 CREATE TABLE Faculty (
-    faculty_id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    faculty_id VARCHAR(50) PRIMARY KEY,
     FOREIGN KEY (faculty_id) REFERENCES User(user_id) ON DELETE CASCADE
 );
 
@@ -27,15 +27,15 @@ CREATE TABLE Faculty (
 CREATE TABLE ETextbook (
     textbook_id INTEGER PRIMARY KEY AUTO_INCREMENT,
     title VARCHAR(255) NOT NULL,
-    admin_id INTEGER REFERENCES Admin(admin_id) ON DELETE SET NULL,
-    faculty_id INTEGER REFERENCES Faculty(faculty_id) ON DELETE SET NULL
+    admin_id VARCHAR(50) REFERENCES Admin(admin_id) ON DELETE SET NULL,
+    faculty_id VARCHAR(50) REFERENCES Faculty(faculty_id) ON DELETE SET NULL
 );
 
 -- Course Table
 CREATE TABLE Course (
     course_id INTEGER PRIMARY KEY AUTO_INCREMENT,
     title VARCHAR(255) NOT NULL,
-    faculty_id INTEGER REFERENCES Faculty(faculty_id) ON DELETE SET NULL,
+    faculty_id VARCHAR(50) REFERENCES Faculty(faculty_id) ON DELETE SET NULL,
     start_date DATE NOT NULL,
     end_date DATE NOT NULL,
     course_type ENUM('active', 'evaluation') NOT NULL,
@@ -48,14 +48,14 @@ CREATE TABLE Course (
 
 -- TeachingAssistant Table
 CREATE TABLE TeachingAssistant (
-    teaching_assistant_id INTEGER PRIMARY KEY AUTO_INCREMENT,
-    user_id INTEGER NOT NULL REFERENCES User(user_id) ON DELETE CASCADE,
+    teaching_assistant_id VARCHAR(50) PRIMARY KEY,
+    user_id VARCHAR(50) NOT NULL REFERENCES User(user_id) ON DELETE CASCADE,
     course_id INTEGER NOT NULL REFERENCES Course(course_id) ON DELETE CASCADE
 );
 
 -- Student Table
 CREATE TABLE Student (
-    student_id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    student_id VARCHAR(50) PRIMARY KEY,
     FOREIGN KEY (student_id) REFERENCES User(user_id) ON DELETE CASCADE
 );
 
@@ -63,7 +63,7 @@ CREATE TABLE Student (
 CREATE TABLE Enrollment (
     enrollment_id INTEGER PRIMARY KEY AUTO_INCREMENT,
     course_id INTEGER NOT NULL REFERENCES Course(course_id) ON DELETE CASCADE,
-    student_id INTEGER NOT NULL REFERENCES Student(student_id) ON DELETE CASCADE,
+    student_id VARCHAR(50) NOT NULL REFERENCES Student(student_id) ON DELETE CASCADE,
     status ENUM('pending', 'approved') NOT NULL
 );
 
@@ -71,7 +71,7 @@ CREATE TABLE Enrollment (
 CREATE TABLE Notification (
     notification_id INTEGER PRIMARY KEY AUTO_INCREMENT,
     message TEXT NOT NULL,
-    user_id INTEGER NOT NULL REFERENCES User(user_id) ON DELETE CASCADE,
+    user_id VARCHAR(50) NOT NULL REFERENCES User(user_id) ON DELETE CASCADE,
     status VARCHAR(50) NOT NULL,
     timestamp TIMESTAMP NOT NULL
 );
@@ -120,7 +120,7 @@ CREATE TABLE Score (
     score INTEGER NOT NULL,
     points INTEGER NOT NULL,
     activity_id INTEGER NOT NULL REFERENCES Activity(activity_id) ON DELETE CASCADE,
-    student_id INTEGER NOT NULL REFERENCES Student(student_id) ON DELETE CASCADE,
+    student_id VARCHAR(50) NOT NULL REFERENCES Student(student_id) ON DELETE CASCADE,
     timestamp TIMESTAMP NOT NULL,
     PRIMARY KEY (activity_id, student_id)
 );
@@ -159,3 +159,7 @@ CREATE TABLE Score (
 -- INSERT INTO User (user_id, first_name, last_name, email, password, role)
 -- VALUES ('1', 'blah', 'blah2', 'blah@example.com', 'blah', 'admin');
 
+-- SELECT * FROM Admin;
+
+-- ALTER TABLE User
+-- MODIFY COLUMN user_id VARCHAR(50);

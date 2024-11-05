@@ -121,20 +121,20 @@ def create_faculty_account():
         last_name = input("Enter Last Name: ")
         email = input("Enter Email: ")
         password = input("Enter Password: ")
+
+        # Generate user_id based on the provided logic
         user_id_prefix = first_name[:2] + last_name[:2]
         current_date = datetime.now()
         user_id_date = current_date.strftime("%y%m")
         user_id = user_id_prefix + user_id_date
-        print(user_id)
+        print(f"Generated User ID: {user_id}")
         
-
         print("\n1. Add User")
         print("2. Go Back")
         choice = input("Enter choice (1-2): ")
 
         if choice == '1':
             # Attempt to add user to the database
-            
             conn = get_db_connection()
             cursor = conn.cursor()
 
@@ -146,13 +146,21 @@ def create_faculty_account():
                 if existing_user:
                     print("A user with this email already exists. Please try again with a different email.")
                 else:
-                    # Insert new faculty into the database
+                    # Insert new faculty into User table
                     cursor.execute("""
                         INSERT INTO User (user_id, first_name, last_name, email, password, role)
                         VALUES (%s, %s, %s, %s, %s, 'faculty')
                     """, (user_id, first_name, last_name, email, password))
+                    
+                    # Insert into Faculty table using the same user_id as faculty_id
+                    cursor.execute("""
+                        INSERT INTO Faculty (faculty_id)
+                        VALUES (%s)
+                    """, (user_id,))
+                    
+                    # Commit the transaction
                     conn.commit()
-                    print("Faculty account created successfully!")
+                    print("Faculty account created successfully in both User and Faculty tables!")
             except mysql.connector.Error as err:
                 print(f"An error occurred: {err}")
             finally:
@@ -166,6 +174,59 @@ def create_faculty_account():
             return  # Return to the Admin Landing Page
         else:
             print("Invalid choice. Please select 1 or 2.")
+# def create_faculty_account():
+#     while True:
+#         print("\n===== Create a Faculty Account =====")
+#         first_name = input("Enter First Name: ")
+#         last_name = input("Enter Last Name: ")
+#         email = input("Enter Email: ")
+#         password = input("Enter Password: ")
+#         user_id_prefix = first_name[:2] + last_name[:2]
+#         current_date = datetime.now()
+#         user_id_date = current_date.strftime("%y%m")
+#         user_id = user_id_prefix + user_id_date
+#         print(user_id)
+        
+# ## Add-1 Create a trigger for this user creation
+
+#         print("\n1. Add User")
+#         print("2. Go Back")
+#         choice = input("Enter choice (1-2): ")
+
+#         if choice == '1':
+#             # Attempt to add user to the database
+            
+#             conn = get_db_connection()
+#             cursor = conn.cursor()
+
+#             try:
+#                 # Check if email already exists
+#                 cursor.execute("SELECT * FROM User WHERE email=%s", (email,))
+#                 existing_user = cursor.fetchone()
+
+#                 if existing_user:
+#                     print("A user with this email already exists. Please try again with a different email.")
+#                 else:
+#                     # Insert new faculty into the database
+#                     cursor.execute("""
+#                         INSERT INTO User (user_id, first_name, last_name, email, password, role)
+#                         VALUES (%s, %s, %s, %s, %s, 'faculty')
+#                     """, (user_id, first_name, last_name, email, password))
+#                     conn.commit()
+#                     print("Faculty account created successfully!")
+#             except mysql.connector.Error as err:
+#                 print(f"An error occurred: {err}")
+#             finally:
+#                 cursor.close()
+#                 conn.close()
+#             return  # Go back to the admin landing page after adding user
+
+#         elif choice == '2':
+#             # Go back to the admin landing page without saving
+#             print("Discarding input. Returning to Admin Landing Page...")
+#             return  # Return to the Admin Landing Page
+#         else:
+#             print("Invalid choice. Please select 1 or 2.")
 
 
 def create_e_textbook():
@@ -337,7 +398,7 @@ def add_new_content_block(section_id):
         cursor = conn.cursor()
 
         try:
-            cursor.execute("INSERT INTO ContentBlock (contentblock_id, section_id) VALUES (%s, %s)", (content_block_id, section_id,))
+            cursor.execute("INSERT INTO ContentBlock (content_block_id, section_id) VALUES (%s, %s)", (content_block_id, section_id,))
             conn.commit()
             print(f"New Content Block created with ID {content_block_id}.")
             # Menu for content block actions
@@ -392,7 +453,7 @@ def add_text(content_block_id, section_id):
             cursor = conn.cursor()
 
             try:
-                cursor.execute("INSERT INTO ContentBlock (content_type, content, section_id) VALUES (%s, %s, %s)", ('text', text_content, section_id))
+                cursor.execute("INSERT INTO ContentBlock (block_type, content, section_id) VALUES (%s, %s, %s)", ('text', text_content, section_id))
                 conn.commit()
                 print(f"Text content added to Content Block {content_block_id} successfully!")
             except mysql.connector.Error as err:
@@ -433,7 +494,7 @@ def add_picture(content_block_id,section_id):
 
             try:
                 # Save picture URL as a content block in the database
-                cursor.execute("INSERT INTO ContentBlock (content_type, content, section_id) VALUES (%s, %s, %s)", ('text',picture_url, section_id))
+                cursor.execute("INSERT INTO ContentBlock (block_type, content, section_id) VALUES (%s, %s, %s)", ('text',picture_url, section_id))
                 conn.commit()
                 print(f"Picture URL added to Content Block {content_block_id} successfully!")
             except mysql.connector.Error as err:
@@ -470,7 +531,7 @@ def add_activity(content_block_id):
 
         try:
             cursor.execute("""
-                INSERT INTO Activity (activity_id, contentblock_id, question, correct_ans)
+                INSERT INTO Activity (activity_id, content_block_id, question, correct_answer)
                 VALUES (%s, %s, %s, %s)
             """, (activity_id, content_block_id, question_text, correct_answer))
             conn.commit()
@@ -536,7 +597,7 @@ def add_question(activity_id):
 
             try:
                 cursor.execute("""
-                    INSERT INTO Activity (question, correct_ans, incorrect_ans1, incorrect_ans2, incorrect_ans3, explanation, contentblock_id)
+                    INSERT INTO Activity (question, correct_answer, incorrect_answer1, incorrect_answer2, incorrect_answer3, explanation, content_block_id)
                     VALUES (%s, %s, %s, %s, %s, %s, %s)
                 """, (question_text, option1_text, option2_text, option3_text, option4_text, "Explanation text", activity_id))
                 conn.commit()
@@ -734,7 +795,7 @@ def modify_content_block(section_id):
 
         try:
             # Check if the Content Block exists in the database
-            cursor.execute("SELECT * FROM ContentBlock WHERE contentblock_id = %s", (content_block_id,))
+            cursor.execute("SELECT * FROM ContentBlock WHERE content_block_id = %s", (content_block_id,))
             content_block = cursor.fetchone()
 
             if not content_block:
@@ -1489,7 +1550,7 @@ def delete_chapter(chapter_id):
 def add_new_section_faculty(chapter_id):
     while True:
         print("\n===== Add New Section =====")
-        section_numberber = input("Enter Section Number: ")
+        section_number = input("Enter Section Number: ")
         section_title = input("Enter Section Title: ")
 
         print("\n1. Add New Content Block")
@@ -1503,20 +1564,20 @@ def add_new_section_faculty(chapter_id):
 
             try:
                 # Check if the section already exists
-                cursor.execute("SELECT * FROM Section WHERE section_number=%s AND chapter_id=%s", (section_numberber, chapter_id))
+                cursor.execute("SELECT * FROM Section WHERE section_number=%s AND chapter_id=%s", (section_number, chapter_id))
                 existing_section = cursor.fetchone()
 
                 if existing_section:
-                    print(f"A section with number {section_numberber} already exists for this chapter.")
+                    print(f"A section with number {section_number} already exists for this chapter.")
                 else:
                     # Insert the new section into the database with the correct column name
                     cursor.execute("""
                         INSERT INTO Section (section_number, title, chapter_id)
                         VALUES (%s, %s, %s)
-                    """, (section_numberber, section_title, chapter_id))
+                    """, (section_number, section_title, chapter_id))
                     conn.commit()
                     print("Section created successfully! Redirecting to Add New Content Block...")
-                    add_new_content_block_faculty(section_numberber)  # Redirect to add new content block
+                    add_new_content_block_faculty(section_number)  # Redirect to add new content block
                     return  # Return to the previous page after content block addition
             except mysql.connector.Error as err:
                 print(f"An error occurred: {err}")
@@ -1534,18 +1595,18 @@ def add_new_section_faculty(chapter_id):
 def modify_section_faculty(chapter_id):
     while True:
         print("\n===== Modify Section =====")
-        section_numberber = input("Enter Section Number: ")
+        section_number = input("Enter Section Number: ")
 
         # Check if the section exists in the database
         conn = get_db_connection()
         cursor = conn.cursor()
 
         try:
-            cursor.execute("SELECT * FROM Section WHERE section_number=%s AND chapter_id=%s", (section_numberber, chapter_id))
+            cursor.execute("SELECT * FROM Section WHERE section_number=%s AND chapter_id=%s", (section_number, chapter_id))
             section = cursor.fetchone()
 
             if not section:
-                print(f"Section {section_numberber} does not exist. Please try again.")
+                print(f"Section {section_number} does not exist. Please try again.")
                 cursor.close()
                 conn.close()
                 return  # Return if the section does not exist
@@ -1560,13 +1621,13 @@ def modify_section_faculty(chapter_id):
             choice = input("Enter choice (1-5): ")
 
             if choice == '1':
-                hide_section(section_numberber)
+                hide_section(section_number)
             elif choice == '2':
-                delete_section(section_numberber)
+                delete_section(section_number)
             elif choice == '3':
-                add_new_content_block_faculty(section_numberber)
+                add_new_content_block_faculty(section_number)
             elif choice == '4':
-                modify_content_block_faculty(section_numberber)
+                modify_content_block_faculty(section_number)
             elif choice == '5':
                 print("Returning to the previous page...")
                 break
@@ -1626,7 +1687,7 @@ def delete_section():
         print("\n===== Delete Section =====")
         
         # Take input from the user for section number
-        section_numberber = input("Enter Section Number: ")
+        section_number = input("Enter Section Number: ")
 
         print("\n1. Save")
         print("2. Cancel")
@@ -1639,14 +1700,14 @@ def delete_section():
 
             try:
                 # Check if the section exists in the database
-                cursor.execute("SELECT * FROM Section WHERE section_number=%s", (section_numberber,))
+                cursor.execute("SELECT * FROM Section WHERE section_number=%s", (section_number,))
                 section = cursor.fetchone()
 
                 if section:
                     # Delete the section from the database
-                    cursor.execute("DELETE FROM Section WHERE section_number=%s", (section_numberber,))
+                    cursor.execute("DELETE FROM Section WHERE section_number=%s", (section_number,))
                     conn.commit()
-                    print(f"Section {section_numberber} has been successfully deleted.")
+                    print(f"Section {section_number} has been successfully deleted.")
                 else:
                     print("Section not found. Please enter a valid section number.")
             except mysql.connector.Error as err:
@@ -1958,7 +2019,7 @@ def add_text_faculty(content_block_id, section_id):
             try:
                 # Insert the text along with content type, section_id, and content_block_id
                 cursor.execute("""
-                    INSERT INTO ContentBlock (content_type, content, section_id, contentblock_id)
+                    INSERT INTO ContentBlock (block_type, content, section_id, content_block_id)
                     VALUES (%s, %s, %s, %s)
                 """, ("Text", text_content, section_id, content_block_id))
                 conn.commit()
@@ -1997,7 +2058,7 @@ def add_picture_faculty(content_block_id, section_id):
             try:
                 # Insert the picture into the ContentBlock table
                 cursor.execute("""
-                    INSERT INTO ContentBlock (content_type, content, section_id, contentblock_id)
+                    INSERT INTO ContentBlock (block_type, content, section_id, content_block_id)
                     VALUES (%s, %s, %s, %s)
                 """, ("Picture", picture_content, section_id, content_block_id))
                 conn.commit()
@@ -2043,7 +2104,7 @@ def add_activity_faculty(content_block_id):
                 else:
                     # Insert the new activity into the database
                     cursor.execute("""
-                        INSERT INTO Activity (activity_id, contentblock_id)
+                        INSERT INTO Activity (activity_id, content_block_id)
                         VALUES (%s, %s)
                     """, (activity_id, content_block_id))
                     conn.commit()
@@ -2451,7 +2512,7 @@ def ta_view_students(ta_id):
             print(f"\nStudents in Course ID {course_id}:")
             cursor.execute("""
                 SELECT student_id, name
-                FROM Activity
+                FROM StudentActivity
                 WHERE course_id=%s
             """, (course_id,))
             students = cursor.fetchall()
@@ -2514,7 +2575,7 @@ def ta_add_new_chapter():
 
 def ta_add_new_section(chapter_id):
     print("\n===== Add New Section =====")
-    section_numberber = input("Enter Section Number: ")
+    section_number = input("Enter Section Number: ")
     section_title = input("Enter Section Title: ")
 
     # Establish a database connection to check if the section already exists
@@ -2523,7 +2584,7 @@ def ta_add_new_section(chapter_id):
 
     try:
         # Check if the section already exists in the database
-        cursor.execute("SELECT * FROM Sections WHERE chapter_id=%s AND section_number=%s", (chapter_id, section_numberber))
+        cursor.execute("SELECT * FROM Sections WHERE chapter_id=%s AND section_number=%s", (chapter_id, section_number))
         if cursor.fetchone():
             print("Section already exists with this number. Please try another section number.")
         else:
@@ -2534,7 +2595,7 @@ def ta_add_new_section(chapter_id):
 
             if choice == '1':
                 # Function to add a new content block
-                ta_add_new_content_block(chapter_id, section_numberber)
+                ta_add_new_content_block(chapter_id, section_number)
             elif choice == '2':
                 print("Going back to the previous menu...")
             else:
@@ -2802,7 +2863,7 @@ def ta_modify_section():
         print("\n===== Modify Section =====")
         
         # Take input for section details
-        section_numberber = input("Enter Section Number: ")
+        section_number = input("Enter Section Number: ")
         section_title = input("Enter Section Title: ")
         chapter_id = input("Enter Chapter ID: ")
         book = input("Enter Book: ")
@@ -2811,7 +2872,7 @@ def ta_modify_section():
         conn = get_db_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute("SELECT COUNT(*) FROM Sections WHERE section_number = %s AND chapter_id = %s", (section_numberber, chapter_id))
+            cursor.execute("SELECT COUNT(*) FROM Sections WHERE section_number = %s AND chapter_id = %s", (section_number, chapter_id))
             (count,) = cursor.fetchone()
             if count == 0:
                 print("This section does not exist. Please check the details or create a new section.")
@@ -2834,22 +2895,22 @@ def ta_modify_section():
         if choice == '1':
             print("Adding new content block...")
             # Call your function to add a new content block, passing the relevant details
-            ta_add_new_content_block(section_numberber, chapter_id, book)
+            ta_add_new_content_block(section_number, chapter_id, book)
 
         elif choice == '2':
             print("Modifying content block...")
             # Call your function to modify a content block, passing relevant details
-            ta_modify_content_block(section_numberber)
+            ta_modify_content_block(section_number)
 
         elif choice == '3':
             print("Deleting content block...")
             # Call your function to delete a content block
-            ta_delete_content_block(section_numberber)
+            ta_delete_content_block(section_number)
 
         elif choice == '4':
             print("Hiding content block...")
             # Call your function to hide a content block
-            ta_hide_content_block(section_numberber)
+            ta_hide_content_block(section_number)
 
         elif choice == '5':
             print("Going back to the previous page...")
