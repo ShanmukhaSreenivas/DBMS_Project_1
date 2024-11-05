@@ -23,12 +23,11 @@ CREATE TABLE Faculty (
     FOREIGN KEY (faculty_id) REFERENCES User(user_id) ON DELETE CASCADE
 );
 
-
 -- ETextbook Table
 CREATE TABLE ETextbook (
     textbook_id INTEGER PRIMARY KEY AUTO_INCREMENT,
     title VARCHAR(255) NOT NULL,
-    admin_id INTEGER REFERENCES Admin(admin_id) ON DELETE SET NULL
+    admin_id INTEGER REFERENCES Admin(admin_id) ON DELETE SET NULL,
     faculty_id INTEGER REFERENCES Faculty(faculty_id) ON DELETE SET NULL
 );
 
@@ -36,7 +35,7 @@ CREATE TABLE ETextbook (
 CREATE TABLE Course (
     course_id INTEGER PRIMARY KEY AUTO_INCREMENT,
     title VARCHAR(255) NOT NULL,
-    faculty_id INTEGER NOT NULL REFERENCES Faculty(faculty_id) ON DELETE SET NULL,
+    faculty_id INTEGER REFERENCES Faculty(faculty_id) ON DELETE SET NULL,
     start_date DATE NOT NULL,
     end_date DATE NOT NULL,
     course_type ENUM('active', 'evaluation') NOT NULL,

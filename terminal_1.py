@@ -787,8 +787,8 @@ def create_new_active_course():
         course_title = input("Enter Course Name: ")
         textbook_id = input("Enter Unique ID of the E-textbook: ")
         faculty_id = input("Enter Faculty Member ID: ")
-        start_dt = input("Enter Course Start Date (YYYY-MM-DD): ")
-        end_dt = input("Enter Course End Date (YYYY-MM-DD): ")
+        start_date = input("Enter Course Start Date (YYYY-MM-DD): ")
+        end_date = input("Enter Course End Date (YYYY-MM-DD): ")
         course_token = input("Enter Unique Token: ")
         capacity = input("Enter Course Capacity: ")
 
@@ -831,16 +831,16 @@ def create_new_active_course():
                     continue  # Go back to the input prompt
 
                 # Correctly parse the dates
-                start_dt = datetime.strptime(start_dt, "%Y-%m-%d").date()
-                end_dt = datetime.strptime(end_dt, "%Y-%m-%d").date()
+                start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
+                end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
 
                 
 
                 # Insert the new active course into the database
                 cursor.execute("""
-                    INSERT INTO Course (course_id, course_title, faculty_id, start_dt, end_dt, course_token, capacity, course_type, textbook_id)
+                    INSERT INTO Course (course_id, course_title, faculty_id, start_date, end_date, course_token, capacity, course_type, textbook_id)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, (course_id, course_title, faculty_id, start_dt, end_dt, course_token, capacity, 'active', textbook_id))
+                """, (course_id, course_title, faculty_id, start_date, end_date, course_token, capacity, 'active', textbook_id))
 
                 # Commit the changes to the database
                 conn.commit()
@@ -883,8 +883,8 @@ def create_new_eval_course():
         course_title = input("Enter Course Name: ")
         textbook_id = input("Enter Unique ID of the E-textbook: ")
         faculty_id = input("Enter Faculty Member ID: ")
-        start_dt = input("Enter Course Start Date (YYYY-MM-DD): ")
-        end_dt = input("Enter Course End Date (YYYY-MM-DD): ")
+        start_date = input("Enter Course Start Date (YYYY-MM-DD): ")
+        end_date = input("Enter Course End Date (YYYY-MM-DD): ")
         token = input("Enter Unique Token: ")
         capacity = input("Enter Course Capacity: ")
         
@@ -926,9 +926,9 @@ def create_new_eval_course():
 
                 # Insert the new evaluation course into the database
                 cursor.execute("""
-                    INSERT INTO Course (course_id, course_title, faculty_id, start_dt, end_dt, course_token, capacity, course_type, textbook_id)
+                    INSERT INTO Course (course_id, course_title, faculty_id, start_date, end_date, course_token, capacity, course_type, textbook_id)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, 'evaluation', %s)
-                """, (course_id, course_title, faculty_id, start_dt, end_dt, token, capacity, textbook_id))
+                """, (course_id, course_title, faculty_id, start_date, end_date, token, capacity, textbook_id))
                 conn.commit()
 
                 print("New Evaluation Course created successfully!")
