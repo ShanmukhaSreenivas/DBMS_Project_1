@@ -174,6 +174,7 @@ def create_faculty_account():
             return  # Return to the Admin Landing Page
         else:
             print("Invalid choice. Please select 1 or 2.")
+
 # def create_faculty_account():
 #     while True:
 #         print("\n===== Create a Faculty Account =====")

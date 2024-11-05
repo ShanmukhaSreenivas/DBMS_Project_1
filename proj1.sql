@@ -157,9 +157,6 @@ CREATE TABLE Score (
 -- JOIN User ON TeachingAssistant.user_id = User.user_id);
 
 -- INSERT INTO User (user_id, first_name, last_name, email, password, role)
--- VALUES ('1', 'blah', 'blah2', 'blah@example.com', 'blah', 'admin');
+-- VALUES ('blbl2411', 'blah', 'blah2', 'blah@example.com', 'blah', 'admin');
 
--- SELECT * FROM Admin;
-
--- ALTER TABLE User
--- MODIFY COLUMN user_id VARCHAR(50);
+-- SELECT * FROM User;
