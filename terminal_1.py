@@ -4,7 +4,7 @@ from datetime import datetime
 # Database connection function
 def get_db_connection():
     return mysql.connector.connect(
-        host="127.0.0.3306",
+        host="127.0.0.1",
         user="root",  # Replace with your username
         password="kemaforogan",  # Replace with your password
         database="proj1"  # Replace with your database name
@@ -185,7 +185,7 @@ def create_e_textbook():
 
             try:
                 # Check if the E-textbook ID already exists
-                cursor.execute("SELECT * FROM Textbook WHERE textbook_id=%s", (textbook_id,))
+                cursor.execute("SELECT * FROM ETextbook WHERE textbook_id=%s", (textbook_id,))
                 existing_textbook = cursor.fetchone()
 
                 if existing_textbook:
@@ -193,7 +193,7 @@ def create_e_textbook():
                 else:
                     # Insert the new textbook into the database
                     cursor.execute("""
-                        INSERT INTO Textbook (textbook_id, title)
+                        INSERT INTO ETextbook (textbook_id, title)
                         VALUES (%s, %s)
                     """, (textbook_id, title))
                     conn.commit()
@@ -218,7 +218,7 @@ def add_new_chapter(textbook_id):
         print(f"\n===== Add New Chapter to E-textbook (ID: {textbook_id}) =====")
         chapter_id = input("Enter Unique Chapter ID: ")
         chapter_title = input("Enter Chapter Title: ")
-        chapter_num = input("Enter Chapter Number: ")
+        chapter_number = input("Enter Chapter Number: ")
         print("\n1. Add New Section")
         print("2. Go Back")
         print("3. Landing Page")
@@ -232,9 +232,9 @@ def add_new_chapter(textbook_id):
             try:
                 # Insert the new chapter into the database
                 cursor.execute("""
-                    INSERT INTO Chapter (chapter_id, title, textbook_id, chapter_num)
+                    INSERT INTO Chapter (chapter_id, title, textbook_id, chapter_number)
                     VALUES (%s, %s, %s, %s)
-                """, (chapter_id, chapter_title, textbook_id, chapter_num))
+                """, (chapter_id, chapter_title, textbook_id, chapter_number))
                 conn.commit()
                 print("Chapter added successfully!")
                 add_new_section(chapter_id)  # Redirect to add new section function
@@ -281,7 +281,7 @@ def add_new_section(chapter_id):
             conn.close()
 
         section_id = input("Enter Unique Section ID:")
-        section_num = input("Enter Section Number: ")
+        section_number = input("Enter Section Number: ")
         section_title = input("Enter Section Title: ")
         
 
@@ -299,9 +299,9 @@ def add_new_section(chapter_id):
             try:
                 # Insert the new chapter into the database
                 cursor.execute("""
-                    INSERT INTO Section (section_id, title, chapter_id, section_num)
+                    INSERT INTO Section (section_id, title, chapter_id, section_number)
                     VALUES (%s, %s, %s, %s)
-                """, (section_id, section_title, chapter_id, section_num))
+                """, (section_id, section_title, chapter_id, section_number))
                 conn.commit()
                 print("Chapter added successfully!")
                 add_new_content_block(section_id)
@@ -572,7 +572,7 @@ def modify_etextbook():
         cursor = conn.cursor()
 
         # Query to check if the textbook exists
-        cursor.execute("SELECT * FROM Textbook WHERE textbook_id = %s", (textbook_id,))
+        cursor.execute("SELECT * FROM ETextbook WHERE textbook_id = %s", (textbook_id,))
         textbook = cursor.fetchone()
 
         if not textbook:
@@ -815,7 +815,7 @@ def create_new_active_course():
                     continue  # Go back to the input prompt
 
                 # Check if the E-textbook ID exists
-                cursor.execute("SELECT * FROM Textbook WHERE textbook_id = %s", (textbook_id,))
+                cursor.execute("SELECT * FROM ETextbook WHERE textbook_id = %s", (textbook_id,))
                 textbook = cursor.fetchone()
 
                 if not textbook:
@@ -909,7 +909,7 @@ def create_new_eval_course():
                     continue  # Go back to the input prompt
 
                 # Check if the E-textbook ID exists
-                cursor.execute("SELECT * FROM Textbook WHERE textbook_id = %s", (textbook_id,))
+                cursor.execute("SELECT * FROM ETextbook WHERE textbook_id = %s", (textbook_id,))
                 textbook = cursor.fetchone()
 
                 if not textbook:
@@ -1335,7 +1335,7 @@ def add_new_chapter_faculty(textbook_id):
         # Input Chapter details
         chapter_id = input("Enter Unique Chapter ID: ")
         chapter_title = input("Enter Chapter Title: ")
-        chapter_num = input("Enter Chapter Number: ")
+        chapter_number = input("Enter Chapter Number: ")
         print("\n1. Add New Section")
         print("2. Go Back")
         
@@ -1356,9 +1356,9 @@ def add_new_chapter_faculty(textbook_id):
                 else:
                     # Insert new chapter into the database
                     cursor.execute("""
-                        INSERT INTO Chapter (chapter_id, title, textbook_id, chapter_num)
+                        INSERT INTO Chapter (chapter_id, title, textbook_id, chapter_number)
                         VALUES (%s, %s, %s, %s)
-                    """, (chapter_id, chapter_title, textbook_id, chapter_num))
+                    """, (chapter_id, chapter_title, textbook_id, chapter_number))
                     conn.commit()
                     print("Chapter added successfully!")
                     add_new_section_faculty(chapter_id)  # Redirect to add new section function
@@ -1489,7 +1489,7 @@ def delete_chapter(chapter_id):
 def add_new_section_faculty(chapter_id):
     while True:
         print("\n===== Add New Section =====")
-        section_number = input("Enter Section Number: ")
+        section_numberber = input("Enter Section Number: ")
         section_title = input("Enter Section Title: ")
 
         print("\n1. Add New Content Block")
@@ -1503,20 +1503,20 @@ def add_new_section_faculty(chapter_id):
 
             try:
                 # Check if the section already exists
-                cursor.execute("SELECT * FROM Section WHERE section_num=%s AND chapter_id=%s", (section_number, chapter_id))
+                cursor.execute("SELECT * FROM Section WHERE section_number=%s AND chapter_id=%s", (section_numberber, chapter_id))
                 existing_section = cursor.fetchone()
 
                 if existing_section:
-                    print(f"A section with number {section_number} already exists for this chapter.")
+                    print(f"A section with number {section_numberber} already exists for this chapter.")
                 else:
                     # Insert the new section into the database with the correct column name
                     cursor.execute("""
-                        INSERT INTO Section (section_num, title, chapter_id)
+                        INSERT INTO Section (section_number, title, chapter_id)
                         VALUES (%s, %s, %s)
-                    """, (section_number, section_title, chapter_id))
+                    """, (section_numberber, section_title, chapter_id))
                     conn.commit()
                     print("Section created successfully! Redirecting to Add New Content Block...")
-                    add_new_content_block_faculty(section_number)  # Redirect to add new content block
+                    add_new_content_block_faculty(section_numberber)  # Redirect to add new content block
                     return  # Return to the previous page after content block addition
             except mysql.connector.Error as err:
                 print(f"An error occurred: {err}")
@@ -1534,18 +1534,18 @@ def add_new_section_faculty(chapter_id):
 def modify_section_faculty(chapter_id):
     while True:
         print("\n===== Modify Section =====")
-        section_number = input("Enter Section Number: ")
+        section_numberber = input("Enter Section Number: ")
 
         # Check if the section exists in the database
         conn = get_db_connection()
         cursor = conn.cursor()
 
         try:
-            cursor.execute("SELECT * FROM Section WHERE section_num=%s AND chapter_id=%s", (section_number, chapter_id))
+            cursor.execute("SELECT * FROM Section WHERE section_number=%s AND chapter_id=%s", (section_numberber, chapter_id))
             section = cursor.fetchone()
 
             if not section:
-                print(f"Section {section_number} does not exist. Please try again.")
+                print(f"Section {section_numberber} does not exist. Please try again.")
                 cursor.close()
                 conn.close()
                 return  # Return if the section does not exist
@@ -1560,13 +1560,13 @@ def modify_section_faculty(chapter_id):
             choice = input("Enter choice (1-5): ")
 
             if choice == '1':
-                hide_section(section_number)
+                hide_section(section_numberber)
             elif choice == '2':
-                delete_section(section_number)
+                delete_section(section_numberber)
             elif choice == '3':
-                add_new_content_block_faculty(section_number)
+                add_new_content_block_faculty(section_numberber)
             elif choice == '4':
-                modify_content_block_faculty(section_number)
+                modify_content_block_faculty(section_numberber)
             elif choice == '5':
                 print("Returning to the previous page...")
                 break
@@ -1626,7 +1626,7 @@ def delete_section():
         print("\n===== Delete Section =====")
         
         # Take input from the user for section number
-        section_number = input("Enter Section Number: ")
+        section_numberber = input("Enter Section Number: ")
 
         print("\n1. Save")
         print("2. Cancel")
@@ -1639,14 +1639,14 @@ def delete_section():
 
             try:
                 # Check if the section exists in the database
-                cursor.execute("SELECT * FROM Section WHERE section_num=%s", (section_number,))
+                cursor.execute("SELECT * FROM Section WHERE section_number=%s", (section_numberber,))
                 section = cursor.fetchone()
 
                 if section:
                     # Delete the section from the database
-                    cursor.execute("DELETE FROM Section WHERE section_num=%s", (section_number,))
+                    cursor.execute("DELETE FROM Section WHERE section_number=%s", (section_numberber,))
                     conn.commit()
-                    print(f"Section {section_number} has been successfully deleted.")
+                    print(f"Section {section_numberber} has been successfully deleted.")
                 else:
                     print("Section not found. Please enter a valid section number.")
             except mysql.connector.Error as err:
@@ -2451,7 +2451,7 @@ def ta_view_students(ta_id):
             print(f"\nStudents in Course ID {course_id}:")
             cursor.execute("""
                 SELECT student_id, name
-                FROM StudentActivity
+                FROM Activity
                 WHERE course_id=%s
             """, (course_id,))
             students = cursor.fetchall()
@@ -2479,14 +2479,14 @@ def ta_add_new_chapter():
     print("\n===== Add New Chapter =====")
     chapter_id = input("Enter Unique Chapter ID: ")
     chapter_title = input("Enter Chapter Title: ")
-    chapter_num = input("Enter Chapter Number: ")
+    chapter_number = input("Enter Chapter Number: ")
     # Connect to the database and attempt to add the chapter
     conn = get_db_connection()
     cursor = conn.cursor()
 
     try:
         # Insert the new chapter into the database
-        cursor.execute("INSERT INTO Chapters (chapter_id, title,chapter_num) VALUES (%s, %s, %s)", (chapter_id, chapter_title, chapter_num))
+        cursor.execute("INSERT INTO Chapters (chapter_id, title,chapter_number) VALUES (%s, %s, %s)", (chapter_id, chapter_title, chapter_number))
         conn.commit()
         print("Chapter added successfully.")
 
@@ -2514,7 +2514,7 @@ def ta_add_new_chapter():
 
 def ta_add_new_section(chapter_id):
     print("\n===== Add New Section =====")
-    section_number = input("Enter Section Number: ")
+    section_numberber = input("Enter Section Number: ")
     section_title = input("Enter Section Title: ")
 
     # Establish a database connection to check if the section already exists
@@ -2523,7 +2523,7 @@ def ta_add_new_section(chapter_id):
 
     try:
         # Check if the section already exists in the database
-        cursor.execute("SELECT * FROM Sections WHERE chapter_id=%s AND section_num=%s", (chapter_id, section_number))
+        cursor.execute("SELECT * FROM Sections WHERE chapter_id=%s AND section_number=%s", (chapter_id, section_numberber))
         if cursor.fetchone():
             print("Section already exists with this number. Please try another section number.")
         else:
@@ -2534,7 +2534,7 @@ def ta_add_new_section(chapter_id):
 
             if choice == '1':
                 # Function to add a new content block
-                ta_add_new_content_block(chapter_id, section_number)
+                ta_add_new_content_block(chapter_id, section_numberber)
             elif choice == '2':
                 print("Going back to the previous menu...")
             else:
@@ -2802,7 +2802,7 @@ def ta_modify_section():
         print("\n===== Modify Section =====")
         
         # Take input for section details
-        section_number = input("Enter Section Number: ")
+        section_numberber = input("Enter Section Number: ")
         section_title = input("Enter Section Title: ")
         chapter_id = input("Enter Chapter ID: ")
         book = input("Enter Book: ")
@@ -2811,7 +2811,7 @@ def ta_modify_section():
         conn = get_db_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute("SELECT COUNT(*) FROM Sections WHERE section_num = %s AND chapter_id = %s", (section_number, chapter_id))
+            cursor.execute("SELECT COUNT(*) FROM Sections WHERE section_number = %s AND chapter_id = %s", (section_numberber, chapter_id))
             (count,) = cursor.fetchone()
             if count == 0:
                 print("This section does not exist. Please check the details or create a new section.")
@@ -2834,22 +2834,22 @@ def ta_modify_section():
         if choice == '1':
             print("Adding new content block...")
             # Call your function to add a new content block, passing the relevant details
-            ta_add_new_content_block(section_number, chapter_id, book)
+            ta_add_new_content_block(section_numberber, chapter_id, book)
 
         elif choice == '2':
             print("Modifying content block...")
             # Call your function to modify a content block, passing relevant details
-            ta_modify_content_block(section_number)
+            ta_modify_content_block(section_numberber)
 
         elif choice == '3':
             print("Deleting content block...")
             # Call your function to delete a content block
-            ta_delete_content_block(section_number)
+            ta_delete_content_block(section_numberber)
 
         elif choice == '4':
             print("Hiding content block...")
             # Call your function to hide a content block
-            ta_hide_content_block(section_number)
+            ta_hide_content_block(section_numberber)
 
         elif choice == '5':
             print("Going back to the previous page...")

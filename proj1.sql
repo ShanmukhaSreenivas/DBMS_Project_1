@@ -155,3 +155,7 @@ CREATE TABLE Score (
 -- FROM TeachingAssistant
 -- JOIN Course ON TeachingAssistant.course_id = Course.course_id
 -- JOIN User ON TeachingAssistant.user_id = User.user_id);
+
+-- INSERT INTO User (user_id, first_name, last_name, email, password, role)
+-- VALUES ('1', 'blah', 'blah2', 'blah@example.com', 'blah', 'admin');
+
