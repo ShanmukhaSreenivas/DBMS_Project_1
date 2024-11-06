@@ -304,7 +304,11 @@ def add_new_chapter(textbook_id):
                 # elif role == 'ta':
                 #     return add_new_section(chapter_id, textbook_id, 'ta')
             except mysql.connector.Error as err:
-                print(f"An error occurred: {err}")
+                if "chapter_id must be in the format" in str(err):
+                    print(f"Error: {err}")
+                    print("Please enter a valid chapter_id in the format 'chap[0-9][1-9]'.")
+                else:
+                    print(f"An error occurred: {err}")
             finally:
                 cursor.close()
                 conn.close()
@@ -380,7 +384,11 @@ def add_new_section(chapter_id,textbook_id):
                 # if role ==  'admin':
                 return add_new_content_block(section_id) # Redirect to add new section function
             except mysql.connector.Error as err:
-                print(f"An error occurred: {err}")
+                if "section_number must be in the format" in str(err):
+                    print(f"Error: {err}")
+                    print("Please enter a valid section_number in the format 'sec[0-9][1-9]'.")
+                else:
+                    print(f"An error occurred: {err}")
             finally:
                 cursor.close()
                 conn.close()
@@ -506,10 +514,14 @@ def add_new_content_block(section_id):
             else:
                 print("Invalid choice. Please enter a number between 1 and 5.")
         except mysql.connector.Error as err:
-            print(f"An error occurred: {err}")
-            cursor.close()
-            conn.close()
-            return   
+            if "content_block_id must be in the format" in str(err):
+                print(f"Error: {err}")
+                print("Please enter a valid Content Block ID the format 'sec[0-9][1-9]'.")
+            else:
+                print(f"An error occurred: {err}")
+                cursor.close()
+                conn.close()
+                return   
         
         cursor.close()
         conn.close()
@@ -1545,7 +1557,11 @@ def add_new_chapter_faculty(textbook_id, faculty_id):
                     return add_new_section_faculty(chapter_id, textbook_id, faculty_id)  # Redirect to add new section function
             
             except mysql.connector.Error as err:
-                print(f"An error occurred: {err}")
+                if "chapter_id must be in the format" in str(err):
+                    print(f"Error: {err}")
+                    print("Please enter a valid chapter_id in the format 'chap[0-9][1-9]'.")
+                else:
+                    print(f"An error occurred: {err}")
             
             finally:
                 cursor.close()
@@ -1698,7 +1714,11 @@ def add_new_section_faculty(chapter_id, textbook_id, faculty_id):
                     section_id = cursor.fetchone()[0]
                     return add_new_content_block_faculty(section_id, faculty_id)  # Redirect to add new content block
             except mysql.connector.Error as err:
-                print(f"An error occurred: {err}")
+                if "section_number must be in the format" in str(err):
+                    print(f"Error: {err}")
+                    print("Please enter a valid section_number in the format 'sec[0-9][1-9]'.")
+                else:
+                        print(f"An error occurred: {err}")
             finally:
                 cursor.close()
                 conn.close()
@@ -1834,7 +1854,11 @@ def add_new_content_block_faculty(section_id, faculty_id):
             cursor.execute("INSERT INTO ContentBlock (content_block_id, section_id) VALUES (%s, %s)", (content_block_id, section_id,))
             conn.commit()
         except mysql.connector.Error as err:
-            print(f"An error occurred: {err}")
+            if "content_block_id must be in the format" in str(err):
+                print(f"Error: {err}")
+                print("Please enter a valid Content Block ID the format 'sec[0-9][1-9]'.")
+            else:
+                print(f"An error occurred: {err}")
             cursor.close()
             conn.close()
             return   
@@ -2679,8 +2703,12 @@ def ta_add_new_chapter(ta_id, textbook_id):
                 print("Invalid choice. Please select either 1 or 2.")
 
     except mysql.connector.Error as err:
-        print(f"An error occurred: {err}")
-        conn.rollback()  # Rollback in case of any error during the insert
+        if "chapter_id must be in the format" in str(err):
+            print(f"Error: {err}")
+            print("Please enter a valid chapter_id in the format 'chap[0-9][1-9]'.")
+        else:
+            print(f"An error occurred: {err}")
+            conn.rollback()  # Rollback in case of any error during the insert
 
     finally:
         cursor.close()
@@ -2725,7 +2753,11 @@ def ta_add_new_section(chapter_id, textbook_id, ta_id):
                 print("Invalid choice. Please select either 1 or 2.")
 
     except mysql.connector.Error as err:
-        print(f"An error occurred: {err}")
+        if "section_number must be in the format" in str(err):
+            print(f"Error: {err}")
+            print("Please enter a valid section_number in the format 'sec[0-9][1-9]'.")
+        else:
+            print(f"An error occurred: {err}")
     finally:
         cursor.close()
         conn.close()
@@ -2786,8 +2818,12 @@ def ta_add_new_content_block(chapter_id, section_id, ta_id, textbook_id):
                 cursor.execute("INSERT INTO ContentBlock (content_block_id, section_id) VALUES (%s, %s)", (content_block_id, section_id,))
                 conn.commit()
         except mysql.connector.Error as err:
-            print(f"An error occurred: {err}")
-            continue
+            if "content_block_id must be in the format" in str(err):
+                print(f"Error: {err}")
+                print("Please enter a valid Content Block ID the format 'sec[0-9][1-9]'.")
+            else:
+                print(f"An error occurred: {err}")
+                continue
         finally:
             cursor.close()
             conn.close()
