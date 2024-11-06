@@ -1915,11 +1915,11 @@ def modify_content_block_faculty(section_id, faculty_id):
             return
 
         elif choice == '5':
-            hide_activity_faculty()  # Hide activity
+            hide_activity_faculty(section_id, content_block_id)  # Hide activity
             return
 
         elif choice == '6':
-            delete_activity_faculty()  # Delete activity
+            delete_activity_faculty(section_id, content_block_id)  # Delete activity
             return
 
         elif choice == '7':
@@ -2007,7 +2007,7 @@ def delete_content_block_faculty(section_id, content_block_id):
         else:
             print("Invalid choice. Please select 1 or 2.")
 
-def hide_activity_faculty():
+def hide_activity_faculty(section_id, content_block_id):
     while True:
         print("\n===== Hide Activity =====")
         
@@ -2025,7 +2025,7 @@ def hide_activity_faculty():
 
             try:
                 # Check if the activity exists
-                cursor.execute("SELECT * FROM Activity WHERE activity_id=%s", (activity_id,))
+                cursor.execute("SELECT * FROM Activity WHERE activity_id=%s AND section_id = %s AND content_block_id = %s", (activity_id, section_id, content_block_id,))
                 activity = cursor.fetchone()
 
                 if activity:
@@ -2033,8 +2033,8 @@ def hide_activity_faculty():
                     cursor.execute("""
                         UPDATE Activity
                         SET hidden = 'yes'
-                        WHERE activity_id = %s
-                    """, (activity_id,))
+                        WHERE activity_id = %s AND section_id = %s AND content_block_id = %s
+                    """, (activity_id, section_id, content_block_id))
                     conn.commit()
                     print("Activity hidden successfully!")
                 else:
@@ -2054,7 +2054,7 @@ def hide_activity_faculty():
         else:
             print("Invalid choice. Please select 1 or 2.")
 
-def delete_activity_faculty():
+def delete_activity_faculty(section_id, content_block_id):
     while True:
         print("\n===== Delete Activity =====")
         
@@ -2072,12 +2072,12 @@ def delete_activity_faculty():
 
             try:
                 # Check if the activity exists
-                cursor.execute("SELECT * FROM Activity WHERE activity_id=%s", (activity_id,))
+                cursor.execute("SELECT * FROM Activity WHERE activity_id=%s AND section_id = %s AND content_block_id = %s", (activity_id, section_id, content_block_id,))
                 activity = cursor.fetchone()
 
                 if activity:
                     # Delete the activity from the database
-                    cursor.execute("DELETE FROM Activity WHERE activity_id = %s", (activity_id,))
+                    cursor.execute("DELETE FROM Activity WHERE activity_id = %s AND section_id = %s AND content_block_id = %s", (activity_id, section_id, content_block_id,))
                     conn.commit()
                     print("Activity deleted successfully!")
                 else:
@@ -2536,7 +2536,7 @@ def ta_go_to_active_course(ta_id):
             ta_add_new_chapter(ta_id, textbook_id)
         elif choice == '3':
             # Redirect to modify chapters (implement function for this)
-            ta_modify_chapter(ta_id)
+            ta_modify_chapter(textbook_id, ta_id)
         elif choice == '4':
             # Go back to the previous menu
             print("Going back to the previous page...")
@@ -2688,7 +2688,7 @@ def ta_add_new_chapter(ta_id, textbook_id):
 
             if choice == '1':
                 ta_add_new_section(chapter_id, textbook_id, ta_id)  # Navigate to the function to add a new section
-                break  # Break the loop after adding the section
+                # break  # Break the loop after adding the section
             elif choice == '2':
                 print("Returning to the previous menu...")
                 return ta_go_to_active_course(ta_id)  # Exit the function to return to the previous menu
@@ -2746,7 +2746,7 @@ def ta_add_new_section(chapter_id, textbook_id, ta_id):
         cursor.close()
         conn.close()
 
-def ta_modify_chapter():
+def ta_modify_chapter(textbook_id, ta_id):
     print("\n===== Modify Chapter =====")
     chapter_id = input("Enter Unique Chapter ID: ")
 
@@ -2756,10 +2756,10 @@ def ta_modify_chapter():
 
     try:
         # Check if the chapter ID exists in the database
-        cursor.execute("SELECT EXISTS(SELECT 1 FROM Chapters WHERE chapter_id = %s)", (chapter_id,))
-        exists = cursor.fetchone()[0]
-        if not exists:
-            print("No chapter found with the provided ID. Please check the ID and try again.")
+        cursor.execute("SELECT * FROM Chapter WHERE chapter_id = %s AND textbook_id = %s", (chapter_id,textbook_id))
+        chapter = cursor.fetchone()[0]
+        if not chapter:
+            print("The chapter ID does not exist. Please enter a valid Chapter ID.")
             return  # Exit if the chapter ID is not found
     except mysql.connector.Error as err:
         print(f"An error occurred: {err}")
@@ -2770,14 +2770,14 @@ def ta_modify_chapter():
 
     while True:
         print("\n1. Add New Section")
-        print("2. Add New Activity")
+        print("2. Modify Section")
         print("3. Go Back")
         choice = input("Choose an option (1-3): ")
 
         if choice == '1':
-            ta_add_new_section(chapter_id)  # Function to add a new section
+            ta_add_new_section(chapter_id, textbook_id, ta_id)  # Function to add a new section
         elif choice == '2':
-            ta_add_new_activity(chapter_id)  # Function to add a new activity
+            ta_modify_section(chapter_id, textbook_id, ta_id)  # Function to add a new activity
         elif choice == '3':
             print("Returning to the previous menu...")
             break  # Exit the function to return to the previous menu
@@ -2822,12 +2822,59 @@ def ta_add_new_content_block(chapter_id, section_id, ta_id, textbook_id):
         elif choice == '3':
             ta_add_new_activity(content_block_id, section_id)
         elif choice == '4':
-            ta_hide_content_block(content_block_id, section_id)
+            ta_hide_activity(content_block_id, section_id)
         elif choice == '5':
             print("Going back to the previous menu...")
             return ta_add_new_section(chapter_id, textbook_id, ta_id)
         else:
             print("Invalid choice. Please select a number between 1 and 5.")
+
+def ta_hide_activity(content_block_id, section_id):
+    while True:
+        print("\n===== Hide Activity =====")
+        
+        # Input the unique activity ID
+        activity_id = input("Enter the unique Activity ID: ")
+
+        print("\n1. Save")
+        print("2. Cancel")
+        choice = input("Enter choice (1-2): ")
+
+        if choice == '1':
+            # Proceed to hide the activity
+            conn = get_db_connection()
+            cursor = conn.cursor()
+
+            try:
+                # Check if the activity exists
+                cursor.execute("SELECT * FROM Activity WHERE activity_id=%s AND section_id = %s AND content_block_id = %s", (activity_id, section_id, content_block_id,))
+                activity = cursor.fetchone()
+
+                if activity:
+                    # Update the activity status to 'hidden'
+                    cursor.execute("""
+                        UPDATE Activity
+                        SET hidden = 'yes'
+                        WHERE activity_id = %s AND section_id = %s AND content_block_id = %s
+                    """, (activity_id, section_id, content_block_id))
+                    conn.commit()
+                    print("Activity hidden successfully!")
+                else:
+                    print(f"No activity found with ID: {activity_id}")
+
+            except mysql.connector.Error as err:
+                print(f"An error occurred: {err}")
+            finally:
+                cursor.close()
+                conn.close()
+
+        elif choice == '2':
+            # Discard input and go back to the previous page
+            print("Discarding input and going back to the previous menu...")
+            return
+
+        else:
+            print("Invalid choice. Please select 1 or 2.")
 
 def ta_add_text(content_block_id, section_id):
     while True:
@@ -2989,28 +3036,29 @@ def ta_add_question(activity_id, content_block_id, section_id):
         else:
             print("Invalid choice. Please select 1 or 2.")
 
-def ta_modify_section():
+def ta_modify_section(chapter_id, textbook_id, ta_id):
     while True:
         print("\n===== Modify Section =====")
         
         # Take input for section details
         section_number = input("Enter Section Number: ")
-        section_title = input("Enter Section Title: ")
-        chapter_id = input("Enter Chapter ID: ")
-        book = input("Enter Book: ")
 
         # Database check to see if section exists
         conn = get_db_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute("SELECT COUNT(*) FROM Sections WHERE section_number = %s AND chapter_id = %s", (section_number, chapter_id))
-            (count,) = cursor.fetchone()
-            if count == 0:
-                print("This section does not exist. Please check the details or create a new section.")
-                continue
+            cursor.execute("""
+                SELECT section_id FROM Section
+                WHERE section_number = %s AND chapter_id = %s AND textbook_id = %s
+            """, (section_number, chapter_id, textbook_id))
+            section_id = cursor.fetchone()[0]
+
+            if not section_id:
+                print(f"Section {section_number} does not exist. Please try again.")
+                return
         except mysql.connector.Error as err:
             print(f"An error occurred: {err}")
-            continue
+            return
         finally:
             cursor.close()
             conn.close()
@@ -3026,22 +3074,22 @@ def ta_modify_section():
         if choice == '1':
             print("Adding new content block...")
             # Call your function to add a new content block, passing the relevant details
-            ta_add_new_content_block(section_number, chapter_id, book)
+            ta_add_new_content_block(chapter_id, section_id, ta_id, textbook_id)
 
         elif choice == '2':
             print("Modifying content block...")
             # Call your function to modify a content block, passing relevant details
-            ta_modify_content_block(section_number)
+            ta_modify_content_block(section_id,ta_id)
 
         elif choice == '3':
             print("Deleting content block...")
             # Call your function to delete a content block
-            ta_delete_content_block(section_number)
+            ta_delete_content_block(section_id)
 
         elif choice == '4':
             print("Hiding content block...")
             # Call your function to hide a content block
-            ta_hide_content_block(section_number)
+            ta_hide_content_block(section_id)
 
         elif choice == '5':
             print("Going back to the previous page...")
@@ -3050,7 +3098,7 @@ def ta_modify_section():
         else:
             print("Invalid choice. Please select a number between 1 and 5.")
 
-def ta_modify_content_block():
+def ta_modify_content_block(section_id, ta_id):
     while True:
         print("\n===== Modify Content Block =====")
         
@@ -3061,7 +3109,7 @@ def ta_modify_content_block():
         conn = get_db_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute("SELECT COUNT(*) FROM ContentBlock WHERE content_block_id = %s", (content_block_id,))
+            cursor.execute("SELECT COUNT(*) FROM ContentBlock WHERE content_block_id = %s AND section_id = %s", (content_block_id, section_id,))
             (count,) = cursor.fetchone()
             if count == 0:
                 print("This content block does not exist. Please check the details or create a new content block.")
@@ -3085,17 +3133,17 @@ def ta_modify_content_block():
         if choice == '1':
             print("Adding Text...")
             # Call your function to add text
-            ta_add_text(content_block_id)
+            ta_add_text(content_block_id, section_id)
 
         elif choice == '2':
             print("Adding Picture...")
             # Call your function to add a picture
-            ta_add_picture(content_block_id)
+            ta_add_picture(content_block_id, section_id)
 
         elif choice == '3':
             print("Adding Activity...")
             # Call your function to add an activity
-            ta_add_new_activity(content_block_id)
+            ta_add_new_activity(content_block_id, section_id)
 
         elif choice == '4':
             print("Going back to the previous page...")
@@ -3110,7 +3158,7 @@ def ta_modify_content_block():
         else:
             print("Invalid choice. Please select a number between 1 and 5.")
 
-def ta_delete_content_block():
+def ta_delete_content_block(section_id):
     while True:
         print("\n===== Delete Content Block =====")
         
@@ -3121,7 +3169,7 @@ def ta_delete_content_block():
         conn = get_db_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute("SELECT COUNT(*) FROM ContentBlock WHERE content_block_id = %s", (content_block_id,))
+            cursor.execute("SELECT COUNT(*) FROM ContentBlock WHERE content_block_id = %s AND section_id = %s", (content_block_id, section_id,))
             (count,) = cursor.fetchone()
             if count == 0:
                 print("This content block does not exist. Please check the ID or go back.")
@@ -3143,7 +3191,7 @@ def ta_delete_content_block():
             conn = get_db_connection()
             cursor = conn.cursor()
             try:
-                cursor.execute("DELETE FROM ContentBlock WHERE content_block_id = %s", (content_block_id,))
+                cursor.execute("DELETE FROM ContentBlock WHERE content_block_id = %s AND section_id = %s", (content_block_id, section_id,))
                 conn.commit()
                 print(f"Content Block with ID {content_block_id} has been deleted successfully.")
             except mysql.connector.Error as err:
@@ -3160,7 +3208,7 @@ def ta_delete_content_block():
         else:
             print("Invalid choice. Please select either 1 or 2.")
 
-def ta_hide_content_block():
+def ta_hide_content_block(section_id):
     while True:
         print("\n===== Hide Content Block =====")
         
@@ -3171,7 +3219,7 @@ def ta_hide_content_block():
         conn = get_db_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute("SELECT COUNT(*) FROM ContentBlock WHERE content_block_id = %s", (content_block_id,))
+            cursor.execute("SELECT COUNT(*) FROM ContentBlock WHERE content_block_id = %s AND section_id = %s", (content_block_id, section_id,))
             (count,) = cursor.fetchone()
             if count == 0:
                 print("This content block does not exist. Please check the ID or go back.")
@@ -3193,7 +3241,7 @@ def ta_hide_content_block():
             conn = get_db_connection()
             cursor = conn.cursor()
             try:
-                cursor.execute("UPDATE ContentBlock SET is_hidden = 1 WHERE content_block_id = %s", (content_block_id,))
+                cursor.execute("UPDATE ContentBlock SET hidden = 'yes' WHERE content_block_id = %s and section_id = %s", (content_block_id, section_id))
                 conn.commit()
                 print(f"Content Block with ID {content_block_id} has been hidden successfully.")
             except mysql.connector.Error as err:
