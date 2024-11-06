@@ -576,7 +576,7 @@ def add_picture(content_block_id,section_id):
 
             try:
                 # Save picture URL as a content block in the database
-                cursor.execute("UPDATE ContentBlock SET block_type = %s, content = %s WHERE content_block_id = %s AND section_id = %s", ('image', picture_url, content_block_id, section_id))
+                cursor.execute("UPDATE ContentBlock SET block_type = %s, content = %s WHERE content_block_id = %s AND section_id = %s", ('picture', picture_url, content_block_id, section_id))
                 conn.commit()
                 print(f"Picture URL added to Content Block {content_block_id} successfully!")
             except mysql.connector.Error as err:
@@ -1226,7 +1226,7 @@ def go_to_active_course(faculty_id):
         # Validate if the course ID exists in the database
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM Course WHERE course_type = 'active' AND faculty_id = faculty_id AND course_id = %s", (course_id,))
+        cursor.execute("SELECT * FROM Course WHERE course_type = 'active' AND faculty_id = %s AND course_id = %s", (faculty_id, course_id,))
         active_course = cursor.fetchone()
 
         cursor.execute("SELECT textbook_id FROM Course WHERE course_id = %s", (course_id,))
@@ -1832,8 +1832,6 @@ def delete_section(section_id):
 
 
 
-
-
 def add_new_content_block_faculty(section_id, faculty_id):
     while True:
         print(f"\n===== Add New Content Block for Section (ID: {section_id}) =====")
@@ -2152,7 +2150,7 @@ def add_picture_faculty(content_block_id, section_id, faculty_id):
 
             try:
                 # Insert the picture into the ContentBlock table
-                cursor.execute("UPDATE ContentBlock SET block_type = %s, content = %s WHERE content_block_id = %s AND section_id = %s", ('image', picture_content, content_block_id, section_id))
+                cursor.execute("UPDATE ContentBlock SET block_type = %s, content = %s WHERE content_block_id = %s AND section_id = %s", ('picture', picture_content, content_block_id, section_id))
                 conn.commit()
                 print("Picture added successfully!")
 
@@ -2506,13 +2504,22 @@ def ta_landing_page(ta_id):
             ta_change_password(ta_id)
         elif choice == '4':
             print("Logging out... Returning to the Home page.")
-            return  # You can redirect to the main menu or home page function here
+            return start_menu() # You can redirect to the main menu or home page function here
         else:
             print("Invalid choice. Please select a number between 1 and 4.")
 
 
 def ta_go_to_active_course(ta_id):
     while True:
+
+        course_id = input("Enter the Active Course ID: ")
+
+        # Validate if the course ID exists in the database
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT c.textbook_id FROM Course c JOIN TeachingAssistant t ON t.course_id = c.course_id WHERE c.course_type = 'active' AND t.teaching_assistant_id = %s AND c.course_id = %s", (ta_id, course_id,))
+        textbook_id = cursor.fetchone()[0]
+
         print("\n===== TA: Active Course Menu =====")
         print("1. View Students")
         print("2. Add New Chapter")
@@ -2526,7 +2533,7 @@ def ta_go_to_active_course(ta_id):
             ta_view_students(ta_id)
         elif choice == '2':
             # Redirect to add a new chapter (implement function for this)
-            ta_add_new_chapter(ta_id)
+            ta_add_new_chapter(ta_id, textbook_id)
         elif choice == '3':
             # Redirect to modify chapters (implement function for this)
             ta_modify_chapter(ta_id)
@@ -2543,7 +2550,7 @@ def ta_view_courses(ta_id):
 
     try:
         # Retrieve assigned courses from the database for the specified TA
-        cursor.execute("SELECT course_id, title FROM Course WHERE ta_id = %s", (ta_id,))
+        cursor.execute("SELECT t.course_id, c.title FROM TeachingAssistant t JOIN Course c ON c.course_id = t.course_id WHERE t.teaching_assistant_id = %s", (ta_id,))
         courses = cursor.fetchall()
 
         if courses:
@@ -2558,7 +2565,7 @@ def ta_view_courses(ta_id):
         if choice == '1':
             print("Going back to TA landing page...")
             # Here, you'd typically call a function that brings the user back to the TA landing page
-            ta_landing_page()
+            ta_landing_page(ta_id)
         else:
             print("Invalid option, please try again.")
             view_courses(ta_id)
@@ -2613,13 +2620,15 @@ def ta_change_password(ta_id):
 
         else:
             print("Invalid choice. Please select 1 or 2.")
+
+
 def ta_view_students(ta_id):
     conn = get_db_connection()
     cursor = conn.cursor()
 
     try:
         # Fetching courses the TA is linked to
-        cursor.execute("SELECT course_id FROM Course WHERE ta_id=%s", (ta_id,))
+        cursor.execute("SELECT course_id FROM TeachingAssistant WHERE teaching_assistant_id=%s", (ta_id,))
         courses = cursor.fetchall()
         if not courses:
             print("You are not assigned to any courses.")
@@ -2630,14 +2639,15 @@ def ta_view_students(ta_id):
             course_id = course[0]
             print(f"\nStudents in Course ID {course_id}:")
             cursor.execute("""
-                SELECT student_id, name
-                FROM StudentActivity
+                SELECT DISTINCT e.student_id, CONCAT(u.first_name, " ", u.last_name) as name, e.status
+                FROM Enrollment e
+                JOIN User u ON u.user_id = e.student_id
                 WHERE course_id=%s
             """, (course_id,))
             students = cursor.fetchall()
             if students:
-                for student_id, name in students:
-                    print(f"Student ID: {student_id}, Name: {name}")
+                for student_id, name, status in students:
+                    print(f"Student ID: {student_id}, Name: {name}, Status: {status}")
             else:
                 print(f"No students found in Course ID {course_id}.")
         
@@ -2646,7 +2656,7 @@ def ta_view_students(ta_id):
         if choice == '1':
             print("Going back to TA landing page...")
             # Here, you'd typically call a function that brings the user back to the TA landing page
-            ta_landing_page()
+            ta_landing_page(ta_id)
         else:
             print("Invalid option, please try again.")
             ta_view_students(ta_id)
@@ -2655,18 +2665,19 @@ def ta_view_students(ta_id):
     finally:
         cursor.close()
         conn.close()
-def ta_add_new_chapter():
+
+def ta_add_new_chapter(ta_id, textbook_id):
     print("\n===== Add New Chapter =====")
     chapter_id = input("Enter Unique Chapter ID: ")
     chapter_title = input("Enter Chapter Title: ")
-    chapter_number = input("Enter Chapter Number: ")
+
     # Connect to the database and attempt to add the chapter
     conn = get_db_connection()
     cursor = conn.cursor()
 
     try:
         # Insert the new chapter into the database
-        cursor.execute("INSERT INTO Chapters (chapter_id, title,chapter_number) VALUES (%s, %s, %s)", (chapter_id, chapter_title, chapter_number))
+        cursor.execute("INSERT INTO Chapter(chapter_id, title, textbook_id) VALUES (%s, %s, %s)", (chapter_id, chapter_title, textbook_id))
         conn.commit()
         print("Chapter added successfully.")
 
@@ -2676,11 +2687,11 @@ def ta_add_new_chapter():
             choice = input("Choose an option (1-2): ")
 
             if choice == '1':
-                ta_add_new_section(chapter_id)  # Navigate to the function to add a new section
+                ta_add_new_section(chapter_id, textbook_id, ta_id)  # Navigate to the function to add a new section
                 break  # Break the loop after adding the section
             elif choice == '2':
                 print("Returning to the previous menu...")
-                break  # Exit the function to return to the previous menu
+                return ta_go_to_active_course(ta_id)  # Exit the function to return to the previous menu
             else:
                 print("Invalid choice. Please select either 1 or 2.")
 
@@ -2692,7 +2703,7 @@ def ta_add_new_chapter():
         cursor.close()
         conn.close()
 
-def ta_add_new_section(chapter_id):
+def ta_add_new_section(chapter_id, textbook_id, ta_id):
     print("\n===== Add New Section =====")
     section_number = input("Enter Section Number: ")
     section_title = input("Enter Section Title: ")
@@ -2703,7 +2714,7 @@ def ta_add_new_section(chapter_id):
 
     try:
         # Check if the section already exists in the database
-        cursor.execute("SELECT * FROM Sections WHERE chapter_id=%s AND section_number=%s", (chapter_id, section_number))
+        cursor.execute("SELECT * FROM Section WHERE section_number=%s AND chapter_id=%s AND textbook_id = %s", (section_number, chapter_id, textbook_id))
         if cursor.fetchone():
             print("Section already exists with this number. Please try another section number.")
         else:
@@ -2714,9 +2725,18 @@ def ta_add_new_section(chapter_id):
 
             if choice == '1':
                 # Function to add a new content block
-                ta_add_new_content_block(chapter_id, section_number)
+                cursor.execute("""
+                    INSERT INTO Section (section_number, title, chapter_id,textbook_id)
+                    VALUES (%s, %s, %s, %s)
+                """, (section_number, section_title, chapter_id,textbook_id))
+                conn.commit()
+                print("Section created successfully! Redirecting to Add New Content Block...")
+                cursor.execute("SELECT section_id FROM Section WHERE chapter_id = %s AND textbook_id = %s AND section_number = %s", (chapter_id, textbook_id, section_number))
+                section_id = cursor.fetchone()[0]
+                return ta_add_new_content_block(chapter_id, section_id, ta_id, textbook_id)
             elif choice == '2':
                 print("Going back to the previous menu...")
+                return ta_add_new_chapter(ta_id, textbook_id)
             else:
                 print("Invalid choice. Please select either 1 or 2.")
 
@@ -2764,7 +2784,7 @@ def ta_modify_chapter():
         else:
             print("Invalid choice. Please select either 1, 2, or 3.")
 
-def ta_add_new_content_block():
+def ta_add_new_content_block(chapter_id, section_id, ta_id, textbook_id):
     while True:
         print("\n===== Add New Content Block =====")
         content_block_id = input("Enter Content Block ID: ")
@@ -2773,11 +2793,14 @@ def ta_add_new_content_block():
         conn = get_db_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute("SELECT COUNT(*) FROM ContentBlocks WHERE block_id = %s", (content_block_id,))
+            cursor.execute("SELECT COUNT(*) FROM ContentBlock WHERE content_block_id = %s", (content_block_id,))
             (count,) = cursor.fetchone()
             if count > 0:
                 print("A content block with this ID already exists. Please try a different ID.")
                 continue
+            else:
+                cursor.execute("INSERT INTO ContentBlock (content_block_id, section_id) VALUES (%s, %s)", (content_block_id, section_id,))
+                conn.commit()
         except mysql.connector.Error as err:
             print(f"An error occurred: {err}")
             continue
@@ -2793,20 +2816,20 @@ def ta_add_new_content_block():
         choice = input("Choose an option (1-5): ")
         
         if choice == '1':
-            ta_add_text(content_block_id)
+            ta_add_text(content_block_id, section_id)
         elif choice == '2':
-            ta_add_picture(content_block_id)
+            ta_add_picture(content_block_id, section_id)
         elif choice == '3':
-            ta_add_new_activity(content_block_id)
+            ta_add_new_activity(content_block_id, section_id)
         elif choice == '4':
-            ta_hide_content_block(content_block_id)
+            ta_hide_content_block(content_block_id, section_id)
         elif choice == '5':
             print("Going back to the previous menu...")
-            break
+            return ta_add_new_section(chapter_id, textbook_id, ta_id)
         else:
             print("Invalid choice. Please select a number between 1 and 5.")
 
-def ta_add_text(content_block_id):
+def ta_add_text(content_block_id, section_id):
     while True:
         print("\n===== Add Text to Content Block =====")
         text_input = input("Enter the text to add: ")
@@ -2821,7 +2844,7 @@ def ta_add_text(content_block_id):
             cursor = conn.cursor()
             try:
                 # Insert the text into the ContentBlock table
-                cursor.execute("INSERT INTO ContentBlocks (block_id, text_content) VALUES (%s, %s)", (content_block_id, text_input))
+                cursor.execute("UPDATE ContentBlock SET block_type = %s, content = %s WHERE content_block_id = %s AND section_id = %s", ('text', text_input, content_block_id, section_id))
                 conn.commit()
                 print("Text has been added successfully to the content block.")
                 return  # Return to the previous page after successful save
@@ -2839,7 +2862,7 @@ def ta_add_text(content_block_id):
         else:
             print("Invalid choice. Please select 1 or 2.")
 
-def ta_add_picture(content_block_id):
+def ta_add_picture(content_block_id, section_id):
     while True:
         print("\n===== Add Picture to Content Block =====")
         
@@ -2855,7 +2878,7 @@ def ta_add_picture(content_block_id):
             cursor = conn.cursor()
             try:
                 # Insert the picture details into the ContentBlocks table
-                cursor.execute("INSERT INTO ContentBlocks (block_id, picture_url) VALUES (%s, %s)", (content_block_id, picture_path))
+                cursor.execute("UPDATE ContentBlock SET block_type = %s, content = %s WHERE content_block_id = %s AND section_id = %s", ('picture', picture_path, content_block_id, section_id))
                 conn.commit()
                 print("Picture has been added successfully to the content block.")
                 return  # Go back to the previous page after successful save
@@ -2873,7 +2896,7 @@ def ta_add_picture(content_block_id):
         else:
             print("Invalid choice. Please select 1 or 2.")
 
-def ta_add_new_activity():
+def ta_add_new_activity(content_block_id, section_id):
     while True:
         print("\n===== Add Activity =====")
         
@@ -2885,14 +2908,12 @@ def ta_add_new_activity():
 
         try:
             # Query to check if the activity ID exists in the database
-            cursor.execute("SELECT * FROM Activities WHERE activity_id = %s", (activity_id,))
-            activity = cursor.fetchone()
-
-            if activity:
-                print(f"Activity ID {activity_id} exists. Proceeding...")
-            else:
-                print(f"Activity ID {activity_id} does not exist. Please enter a valid Activity ID.")
-                continue  # Ask for the activity ID again
+            cursor.execute("""
+                INSERT INTO Activity (activity_id, content_block_id, section_id)
+                VALUES (%s, %s, %s)
+            """, (activity_id, content_block_id, section_id,))
+            conn.commit()
+            print(f"Activity with ID {activity_id} added successfully to Content Block {content_block_id}.")
 
         except mysql.connector.Error as err:
             print(f"An error occurred: {err}")
@@ -2909,7 +2930,7 @@ def ta_add_new_activity():
         if choice == '1':
             # Redirect to the Add Question page
             print(f"Redirecting to Add Question page for Activity ID: {activity_id}...")
-            add_question(activity_id)
+            ta_add_question(activity_id, content_block_id, section_id)
             return  # After adding the question, return to the previous page
         elif choice == '2':
             # Discard the input and go back to the previous page
@@ -2918,64 +2939,55 @@ def ta_add_new_activity():
         else:
             print("Invalid choice. Please select 1 or 2.")
 
-def ta_add_question():
+def ta_add_question(activity_id, content_block_id, section_id):
     while True:
         print("\n===== Add Question =====")
-        
-        # Input all required question details
+
         question_id = input("Enter Question ID: ")
         question_text = input("Enter Question Text: ")
-        option_1 = input("Enter Option 1: ")
-        option_1_explanation = input("Enter Option 1 Explanation: ")
-        option_2 = input("Enter Option 2: ")
-        option_2_explanation = input("Enter Option 2 Explanation: ")
-        option_3 = input("Enter Option 3: ")
-        option_3_explanation = input("Enter Option 3 Explanation: ")
-        option_4 = input("Enter Option 4: ")
-        option_4_explanation = input("Enter Option 4 Explanation: ")
-        correct_answer = input("Enter the Correct Answer (Option 1-4): ")
         
-        # Database connection setup
-        conn = get_db_connection()
-        cursor = conn.cursor()
+        option1_text = input("Enter Option 1 Text: ")
+        option1_explanation = input("Enter Option 1 Explanation: ")
+        
+        option2_text = input("Enter Option 2 Text: ")
+        option2_explanation = input("Enter Option 2 Explanation: ")
+        
+        option3_text = input("Enter Option 3 Text: ")
+        option3_explanation = input("Enter Option 3 Explanation: ")
+        
+        option4_text = input("Enter Option 4 Text: ")
+        option4_explanation = input("Enter Option 4 Explanation: ")
 
-        try:
-            # Check if the question ID already exists in the database
-            cursor.execute("SELECT * FROM Questions WHERE question_id = %s", (question_id,))
-            existing_question = cursor.fetchone()
+        correct_option = input("Enter Correct Option (1-4): ")
+        
+        print("\n1. Save")
+        print("2. Cancel")
+        choice = input("Enter choice (1-2): ")
 
-            if existing_question:
-                print(f"Question with ID '{question_id}' already exists. Please enter a unique question ID.")
-                return
+        if choice == '1':
+            # Insert the question into the Activity table
+            conn = get_db_connection()
+            cursor = conn.cursor()
 
-            print("\n1. Save")
-            print("2. Cancel")
-            choice = input("Enter choice (1-2): ")
-
-            if choice == '1':
-                # Insert question data into the database
+            try:
                 cursor.execute("""
-                    INSERT INTO Questions (question_id, question_text, option_1, option_1_explanation, 
-                    option_2, option_2_explanation, option_3, option_3_explanation, option_4, option_4_explanation, correct_answer)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, (question_id, question_text, option_1, option_1_explanation, option_2, option_2_explanation, 
-                      option_3, option_3_explanation, option_4, option_4_explanation, correct_answer))
-                
+                    INSERT INTO Question (question_id, question_text, option1, option2, option3, option4, explanation1, explanation2, explanation3, explanation4, correct_option, activity_id, section_id, content_block_id)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (question_id, question_text, option1_text, option2_text, option3_text, option4_text, option1_explanation, option2_explanation, option3_explanation, option4_explanation, correct_option, activity_id, section_id, content_block_id))
                 conn.commit()
-                print("Question saved successfully and returning to the previous page.")
+                print("Question and options added successfully!")
+            except mysql.connector.Error as err:
+                print(f"An error occurred: {err}")
+            finally:
+                cursor.close()
+                conn.close()
+            return ta_add_new_activity(content_block_id, section_id) # Go back to the previous menu after saving
 
-            elif choice == '2':
-                print("Question input discarded. Returning to the previous page...")
-                return
-
-            else:
-                print("Invalid choice. Please select either 1 or 2.")
-
-        except mysql.connector.Error as err:
-            print(f"An error occurred while checking/saving the question: {err}")
-        finally:
-            cursor.close()
-            conn.close()
+        elif choice == '2':
+            print("Discarding input. Returning to Add Activity page...")
+            return ta_add_new_activity(content_block_id, section_id) # Return to Add Activity page
+        else:
+            print("Invalid choice. Please select 1 or 2.")
 
 def ta_modify_section():
     while True:
@@ -3049,7 +3061,7 @@ def ta_modify_content_block():
         conn = get_db_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute("SELECT COUNT(*) FROM ContentBlocks WHERE block_id = %s", (content_block_id,))
+            cursor.execute("SELECT COUNT(*) FROM ContentBlock WHERE content_block_id = %s", (content_block_id,))
             (count,) = cursor.fetchone()
             if count == 0:
                 print("This content block does not exist. Please check the details or create a new content block.")
@@ -3109,7 +3121,7 @@ def ta_delete_content_block():
         conn = get_db_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute("SELECT COUNT(*) FROM ContentBlocks WHERE block_id = %s", (content_block_id,))
+            cursor.execute("SELECT COUNT(*) FROM ContentBlock WHERE content_block_id = %s", (content_block_id,))
             (count,) = cursor.fetchone()
             if count == 0:
                 print("This content block does not exist. Please check the ID or go back.")
@@ -3131,7 +3143,7 @@ def ta_delete_content_block():
             conn = get_db_connection()
             cursor = conn.cursor()
             try:
-                cursor.execute("DELETE FROM ContentBlocks WHERE block_id = %s", (content_block_id,))
+                cursor.execute("DELETE FROM ContentBlock WHERE content_block_id = %s", (content_block_id,))
                 conn.commit()
                 print(f"Content Block with ID {content_block_id} has been deleted successfully.")
             except mysql.connector.Error as err:
@@ -3159,7 +3171,7 @@ def ta_hide_content_block():
         conn = get_db_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute("SELECT COUNT(*) FROM ContentBlocks WHERE block_id = %s", (content_block_id,))
+            cursor.execute("SELECT COUNT(*) FROM ContentBlock WHERE content_block_id = %s", (content_block_id,))
             (count,) = cursor.fetchone()
             if count == 0:
                 print("This content block does not exist. Please check the ID or go back.")
@@ -3181,7 +3193,7 @@ def ta_hide_content_block():
             conn = get_db_connection()
             cursor = conn.cursor()
             try:
-                cursor.execute("UPDATE ContentBlocks SET is_hidden = 1 WHERE block_id = %s", (content_block_id,))
+                cursor.execute("UPDATE ContentBlock SET is_hidden = 1 WHERE content_block_id = %s", (content_block_id,))
                 conn.commit()
                 print(f"Content Block with ID {content_block_id} has been hidden successfully.")
             except mysql.connector.Error as err:
@@ -3398,7 +3410,7 @@ def view_block(chapter_id, section_id, student_id):
 
     try:
         # Fetch block details for the given chapter and section
-        cursor.execute("SELECT block_id, block_type, content FROM Blocks WHERE chapter_id = %s AND section_id = %s", (chapter_id, section_id))
+        cursor.execute("SELECT content_block_id, block_type, content FROM Blocks WHERE chapter_id = %s AND section_id = %s", (chapter_id, section_id))
         blocks = cursor.fetchall()
 
         if not blocks:
