@@ -188,5 +188,20 @@ VALUES ('blbl2411', 'blah', 'blah2', 'blah@example.com', 'blah', 'admin');
 INSERT INTO User (user_id, first_name, last_name, email, password, role)
 VALUES ('facu2411', 'facu', 'cult', 'facult@example.com', 'facu', 'faculty');
 
+
+INSERT INTO Admin (admin_id) VALUES ("blbl2411");
+
 INSERT INTO Faculty (faculty_id) VALUES ("facu2411");
+
+INSERT INTO ETextbook VALUES(123, 'name', 'blbl2411', 'facu2411');
+INSERT INTO ETextbook VALUES(345, 'book2', 'blbl2411', 'facu2411');
+
+
+INSERT INTO Course VALUES(1, 'csc', 'facu2411', '2024-01-01', '2024-01-02', 'evaluation', '1', 10, 123);
+INSERT INTO Course VALUES(2, 'csc2', 'facu2411', '2024-01-01', '2024-01-02', 'active', '1', 10, 345);
+
+INSERT INTO Chapter VALUES('1', 1, 123, 'no');
+INSERT INTO Chapter VALUES('2', 2, 345, 'no');
+
+INSERT INTO Section VALUES(1, 1, 1, 1, 123, 'no');
 
