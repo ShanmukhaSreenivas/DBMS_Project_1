@@ -1229,6 +1229,9 @@ def go_to_active_course(faculty_id):
         cursor.execute("SELECT * FROM Course WHERE course_type = 'active' AND faculty_id = faculty_id AND course_id = %s", (int(course_id),))
         active_course = cursor.fetchone()
 
+        cursor.execute("SELECT textbook_id FROM Course WHERE course_id = %s", (course_id,))
+        textbook_id = cursor.fetchone()[0]
+
         if not active_course:
             print("Invalid Course ID. Please try again.")
             cursor.close()
@@ -1249,17 +1252,17 @@ def go_to_active_course(faculty_id):
             choice = input("Enter choice (1-7): ")
 
             if choice == '1':
-                view_worklist(course_id)
+                view_worklist(faculty_id)
             elif choice == '2':
-                approve_enrollment(course_id)
+                approve_enrollment(faculty_id)
             elif choice == '3':
-                view_students(course_id)
+                view_students(faculty_id)
             elif choice == '4':
-                add_new_chapter_faculty(course_id, faculty_id)
+                add_new_chapter_faculty(textbook_id, faculty_id)
             elif choice == '5':
-                modify_chapter_faculty(course_id)
+                modify_chapter_faculty(textbook_id, faculty_id)
             elif choice == '6':
-                add_ta(course_id)
+                add_ta(faculty_id)
             elif choice == '7':
                 print("Returning to Faculty Landing Page...")
                 faculty_landing(faculty_id)  # Redirect back to Faculty Landing Page
@@ -1517,10 +1520,6 @@ def add_ta(faculty_id):
         
         else:
             print("Invalid choice. Please select 1 or 2.")
-
-
-
-
 
 
 def add_new_chapter_faculty(textbook_id, faculty_id):
@@ -1850,6 +1849,18 @@ def add_new_content_block_faculty(section_id, faculty_id):
         
         # Input Content Block ID
         content_block_id = input("Enter Unique Content Block ID: ")
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute("INSERT INTO ContentBlock (content_block_id, section_id) VALUES (%s, %s)", (content_block_id, section_id,))
+            conn.commit()
+        except mysql.connector.Error as err:
+            print(f"An error occurred: {err}")
+            cursor.close()
+            conn.close()
+            return   
 
         print("\n1. Add Text")
         print("2. Add Picture")
@@ -2252,63 +2263,63 @@ def add_activity_faculty(content_block_id, section_id, faculty_id):
         # else:
         #     print("Invalid choice. Please select 1 or 2.")
 
-def add_question_faculty(activity_id):
-    while True:
-        print("\n===== Add Question =====")
+# def add_question_faculty(activity_id):
+#     while True:
+#         print("\n===== Add Question =====")
         
-        # Input the question details
-        question_id = input("Enter Question ID: ")
-        question_text = input("Enter Question Text: ")
-        opt1 = input("Enter Option 1: ")
-        opt1_exp = input("Enter Explanation for Option 1: ")
-        opt2 = input("Enter Option 2: ")
-        opt2_exp = input("Enter Explanation for Option 2: ")
-        opt3 = input("Enter Option 3: ")
-        opt3_exp = input("Enter Explanation for Option 3: ")
-        opt4 = input("Enter Option 4: ")
-        opt4_exp = input("Enter Explanation for Option 4: ")
-        correct_answer = input("Enter the Correct Answer (Option 1/2/3/4): ")
+#         # Input the question details
+#         question_id = input("Enter Question ID: ")
+#         question_text = input("Enter Question Text: ")
+#         opt1 = input("Enter Option 1: ")
+#         opt1_exp = input("Enter Explanation for Option 1: ")
+#         opt2 = input("Enter Option 2: ")
+#         opt2_exp = input("Enter Explanation for Option 2: ")
+#         opt3 = input("Enter Option 3: ")
+#         opt3_exp = input("Enter Explanation for Option 3: ")
+#         opt4 = input("Enter Option 4: ")
+#         opt4_exp = input("Enter Explanation for Option 4: ")
+#         correct_answer = input("Enter the Correct Answer (Option 1/2/3/4): ")
 
-        print("\n1. Save")
-        print("2. Cancel")
-        choice = input("Enter choice (1-2): ")
+#         print("\n1. Save")
+#         print("2. Cancel")
+#         choice = input("Enter choice (1-2): ")
 
-        if choice == '1':
-            # Save the question to the database
-            conn = get_db_connection()
-            cursor = conn.cursor()
+#         if choice == '1':
+#             # Save the question to the database
+#             conn = get_db_connection()
+#             cursor = conn.cursor()
 
-            try:
-                # Check if the question ID already exists
-                cursor.execute("SELECT * FROM Question WHERE question_id=%s", (question_id,))
-                existing_question = cursor.fetchone()
+#             try:
+#                 # Check if the question ID already exists
+#                 cursor.execute("SELECT * FROM Question WHERE question_id=%s", (question_id,))
+#                 existing_question = cursor.fetchone()
 
-                if existing_question:
-                    print("A question with this ID already exists. Please try again with a different ID.")
-                else:
-                    # Insert the new question into the database
-                    cursor.execute("""
-                        INSERT INTO Question (question_id, question_text, option1, option1_exp, option2, option2_exp, 
-                                              option3, option3_exp, option4, option4_exp, correct_answer, activity_id)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    """, (question_id, question_text, opt1, opt1_exp, opt2, opt2_exp, opt3, opt3_exp, opt4, opt4_exp, correct_answer, activity_id))
-                    conn.commit()
-                    print("Question saved successfully!")
-                    return  # Go back to the previous page
+#                 if existing_question:
+#                     print("A question with this ID already exists. Please try again with a different ID.")
+#                 else:
+#                     # Insert the new question into the database
+#                     cursor.execute("""
+#                         INSERT INTO Question (question_id, question_text, option1, option1_exp, option2, option2_exp, 
+#                                               option3, option3_exp, option4, option4_exp, correct_answer, activity_id)
+#                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+#                     """, (question_id, question_text, opt1, opt1_exp, opt2, opt2_exp, opt3, opt3_exp, opt4, opt4_exp, correct_answer, activity_id))
+#                     conn.commit()
+#                     print("Question saved successfully!")
+#                     return  # Go back to the previous page
 
-            except mysql.connector.Error as err:
-                print(f"An error occurred: {err}")
-            finally:
-                cursor.close()
-                conn.close()
+#             except mysql.connector.Error as err:
+#                 print(f"An error occurred: {err}")
+#             finally:
+#                 cursor.close()
+#                 conn.close()
 
-        elif choice == '2':
-            # Discard input and go back to the previous page
-            print("Discarding input and going back to the previous menu...")
-            return
+#         elif choice == '2':
+#             # Discard input and go back to the previous page
+#             print("Discarding input and going back to the previous menu...")
+#             return
 
-        else:
-            print("Invalid choice. Please select 1 or 2.")
+#         else:
+#             print("Invalid choice. Please select 1 or 2.")
 
 
 def go_to_evaluation_course(faculty_id):
