@@ -34,14 +34,14 @@ CREATE TABLE ETextbook (
 
 -- Course Table
 CREATE TABLE Course (
-    course_id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    course_id VARCHAR(50) PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     faculty_id VARCHAR(50) REFERENCES Faculty(faculty_id) ON DELETE SET NULL,
     start_date DATE NOT NULL,
     end_date DATE NOT NULL,
     course_type ENUM('active', 'evaluation') NOT NULL,
     course_token VARCHAR(7),
-    capacity INTEGER NOT NULL,
+    capacity INTEGER,
     textbook_id INTEGER NOT NULL,
     FOREIGN KEY (textbook_id) REFERENCES ETextbook(textbook_id)
     -- FOREIGN KEY (faculty_id) REFERENCES User(user_id)
@@ -50,8 +50,8 @@ CREATE TABLE Course (
 -- TeachingAssistant Table
 CREATE TABLE TeachingAssistant (
     teaching_assistant_id VARCHAR(50) PRIMARY KEY,
-    user_id VARCHAR(50) NOT NULL REFERENCES User(user_id) ON DELETE CASCADE,
-    course_id INTEGER NOT NULL REFERENCES Course(course_id) ON DELETE CASCADE
+    faculty_id VARCHAR(50) REFERENCES Faculty(faculty_id) ON DELETE CASCADE,
+    course_id VARCHAR(50) REFERENCES Course(course_id) ON DELETE CASCADE
 );
 
 -- Student Table
@@ -63,8 +63,10 @@ CREATE TABLE Student (
 -- Enrollment Table
 CREATE TABLE Enrollment (
     enrollment_id INTEGER PRIMARY KEY AUTO_INCREMENT,
-    course_id INTEGER NOT NULL REFERENCES Course(course_id) ON DELETE CASCADE,
+    course_id VARCHAR(50) NOT NULL REFERENCES Course(course_id) ON DELETE CASCADE,
     student_id VARCHAR(50) NOT NULL REFERENCES Student(student_id) ON DELETE CASCADE,
+    total_participation_points INT DEFAULT 0,
+    num_of_finished_activities INT DEFAULT 0,
     status ENUM('pending', 'approved') NOT NULL
 );
 
@@ -103,8 +105,8 @@ CREATE TABLE Section (
 -- ContentBlock Table
 CREATE TABLE ContentBlock (
     content_block_id VARCHAR(50),
-    block_type ENUM('text', 'image') NOT NULL DEFAULT 'text',
-    content VARCHAR(50),
+    block_type ENUM('text', 'picture', 'activity') NOT NULL DEFAULT 'text',
+    content VARCHAR(5000),
     hidden ENUM('yes', 'no') NOT NULL DEFAULT 'no',
     section_id INTEGER NOT NULL REFERENCES Section(section_id) ON DELETE CASCADE,
     PRIMARY KEY (section_id, content_block_id)
@@ -112,15 +114,16 @@ CREATE TABLE ContentBlock (
 
 -- Activity Table
 CREATE TABLE Activity (
-    activity_id VARCHAR(20) PRIMARY KEY,
+    activity_id VARCHAR(20),
     hidden ENUM('yes', 'no') NOT NULL DEFAULT 'no',
     section_id INTEGER NOT NULL,
     content_block_id VARCHAR(50) NOT NULL,
-    FOREIGN KEY (section_id, content_block_id) REFERENCES ContentBlock(section_id, content_block_id) ON DELETE CASCADE
+    FOREIGN KEY (section_id, content_block_id) REFERENCES ContentBlock(section_id, content_block_id) ON DELETE CASCADE,
+    PRIMARY KEY (activity_id, section_id, content_block_id)
 );
 
 CREATE TABLE Question(
-    question_id INTEGER PRIMARY KEY,
+    question_id VARCHAR(50),
     question_text TEXT NOT NULL,
     option1 TEXT,
     option2 TEXT,
@@ -132,17 +135,38 @@ CREATE TABLE Question(
     explanation4 TEXT,
     correct_option TEXT,
     activity_id VARCHAR(20) NOT NULL,
-    FOREIGN KEY (activity_id) REFERENCES Activity(activity_id) ON DELETE CASCADE
+    section_id INTEGER NOT NULL,
+    content_block_id VARCHAR(50) NOT NULL,
+    FOREIGN KEY (activity_id,section_id,content_block_id) REFERENCES Activity(activity_id,section_id,content_block_id) ON DELETE CASCADE,
+    PRIMARY KEY (question_id, activity_id, section_id, content_block_id)
 );
 
 -- Score Table
+-- CREATE TABLE Score (
+--     score INTEGER NOT NULL,
+--     points INTEGER NOT NULL,
+--     activity_id VARCHAR(20) NOT NULL REFERENCES Activity(activity_id) ON DELETE CASCADE,
+--     student_id VARCHAR(50) NOT NULL REFERENCES Student(student_id) ON DELETE CASCADE,
+--     timestamp TIMESTAMP NOT NULL,
+--     PRIMARY KEY (activity_id, student_id)
+-- );
+
 CREATE TABLE Score (
-    score INTEGER NOT NULL,
-    points INTEGER NOT NULL,
-    activity_id VARCHAR(20) NOT NULL REFERENCES Activity(activity_id) ON DELETE CASCADE,
-    student_id VARCHAR(50) NOT NULL REFERENCES Student(student_id) ON DELETE CASCADE,
-    timestamp TIMESTAMP NOT NULL,
-    PRIMARY KEY (activity_id, student_id)
+    score_id INT AUTO_INCREMENT PRIMARY KEY,
+    student_id VARCHAR(50) NOT NULL,
+    course_id VARCHAR(50) NOT NULL,
+    textbook_id INT NOT NULL,
+    section_id INT NOT NULL,
+    chapter_id VARCHAR(50) NOT NULL,
+    content_block_id VARCHAR(50) NOT NULL,
+    activity_id VARCHAR(50) NOT NULL,
+    question_id VARCHAR(50) NOT NULL,
+    score INT NOT NULL,
+    feedback VARCHAR(255),
+    timestamp DATETIME NOT NULL,
+    FOREIGN KEY (student_id) REFERENCES Student(student_id) ON DELETE CASCADE,
+    FOREIGN KEY (course_id) REFERENCES Course(course_id) ON DELETE CASCADE,
+    FOREIGN KEY (section_id) REFERENCES Section(section_id) ON DELETE CASCADE
 );
 
 
@@ -184,24 +208,4 @@ CREATE TABLE Score (
 
 INSERT INTO User (user_id, first_name, last_name, email, password, role)
 VALUES ('blbl2411', 'blah', 'blah2', 'blah@example.com', 'blah', 'admin');
-
-INSERT INTO User (user_id, first_name, last_name, email, password, role)
-VALUES ('facu2411', 'facu', 'cult', 'facult@example.com', 'facu', 'faculty');
-
-
-INSERT INTO Admin (admin_id) VALUES ("blbl2411");
-
-INSERT INTO Faculty (faculty_id) VALUES ("facu2411");
-
-INSERT INTO ETextbook VALUES(123, 'name', 'blbl2411', 'facu2411');
-INSERT INTO ETextbook VALUES(345, 'book2', 'blbl2411', 'facu2411');
-
-
-INSERT INTO Course VALUES(1, 'csc', 'facu2411', '2024-01-01', '2024-01-02', 'evaluation', '1', 10, 123);
-INSERT INTO Course VALUES(2, 'csc2', 'facu2411', '2024-01-01', '2024-01-02', 'active', '1', 10, 345);
-
-INSERT INTO Chapter VALUES('1', 1, 123, 'no');
-INSERT INTO Chapter VALUES('2', 2, 345, 'no');
-
-INSERT INTO Section VALUES(1, 1, 1, 1, 123, 'no');
 

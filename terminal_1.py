@@ -677,9 +677,9 @@ def add_question(activity_id, content_block_id, section_id):
 
             try:
                 cursor.execute("""
-                    INSERT INTO Question (question_id, question_text, option1, option2, option3, option4, explanation1, explanation2, explanation3, explanation4, correct_option, activity_id)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, (question_id, question_text, option1_text, option2_text, option3_text, option4_text, option1_explanation, option2_explanation, option3_explanation, option4_explanation, correct_option, activity_id))
+                    INSERT INTO Question (question_id, question_text, option1, option2, option3, option4, explanation1, explanation2, explanation3, explanation4, correct_option, activity_id, section_id, content_block_id)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (question_id, question_text, option1_text, option2_text, option3_text, option4_text, option1_explanation, option2_explanation, option3_explanation, option4_explanation, correct_option, activity_id, section_id, content_block_id))
                 conn.commit()
                 print("Question and options added successfully!")
             except mysql.connector.Error as err:
@@ -733,9 +733,9 @@ def add_question_faculty(activity_id, content_block_id, section_id, faculty_id):
 
             try:
                 cursor.execute("""
-                    INSERT INTO Question (question_id, question_text, option1, option2, option3, option4, explanation1, explanation2, explanation3, explanation4, correct_option, activity_id)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, (question_id, question_text, option1_text, option2_text, option3_text, option4_text, option1_explanation, option2_explanation, option3_explanation, option4_explanation, correct_option, activity_id))
+                    INSERT INTO Question (question_id, question_text, option1, option2, option3, option4, explanation1, explanation2, explanation3, explanation4, correct_option, activity_id, section_id, content_block_id)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (question_id, question_text, option1_text, option2_text, option3_text, option4_text, option1_explanation, option2_explanation, option3_explanation, option4_explanation, correct_option, activity_id, section_id, content_block_id))
                 conn.commit()
                 print("Question and options added successfully!")
             except mysql.connector.Error as err:
@@ -1226,7 +1226,7 @@ def go_to_active_course(faculty_id):
         # Validate if the course ID exists in the database
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM Course WHERE course_type = 'active' AND faculty_id = faculty_id AND course_id = %s", (int(course_id),))
+        cursor.execute("SELECT * FROM Course WHERE course_type = 'active' AND faculty_id = faculty_id AND course_id = %s", (course_id,))
         active_course = cursor.fetchone()
 
         cursor.execute("SELECT textbook_id FROM Course WHERE course_id = %s", (course_id,))
@@ -1286,11 +1286,11 @@ def view_worklist(faculty_id):
             # Example query to fetch the list of students on the worklist for the faculty's courses
             # You may need to adjust the query based on your actual database structure.
             cursor.execute("""
-                SELECT s.student_id, s.first_name, s.last_name, c.title
-                FROM Student s
-                JOIN Enrollment e ON s.student_id = e.student_id
+                SELECT u.user_id, u.first_name, u.last_name, c.title
+                FROM User u
+                JOIN Enrollment e ON u.user_id = e.student_id
                 JOIN Course c ON e.course_id = c.course_id
-                WHERE c.faculty_id = %s AND e.status = 'waiting'
+                WHERE c.faculty_id = %s AND e.status = 'pending' AND u.role = 'student'
             """, (faculty_id,))
             
             worklist = cursor.fetchall()
@@ -1339,7 +1339,7 @@ def approve_enrollment(faculty_id):
             SELECT e.enrollment_id, c.title
             FROM Enrollment e
             JOIN Course c ON e.course_id = c.course_id
-            WHERE e.student_id = %s AND c.faculty_id = %s AND e.status = 'waiting'
+            WHERE e.student_id = %s AND c.faculty_id = %s AND e.status = 'pending'
         """, (student_id, faculty_id))
 
         enrollment_record = cursor.fetchone()
@@ -1408,40 +1408,31 @@ def view_students(faculty_id):
             for idx, course in enumerate(courses, 1):
                 print(f"{idx}. {course[1]} (ID: {course[0]})")
 
-            # Ask faculty to choose a course to view enrolled students
-            course_choice = input("\nEnter the course number to view students or 'b' to go back: ")
+            try:
+                # Fetch students enrolled in the selected course
+                cursor.execute("""
+                    SELECT DISTINCT s.user_id, s.first_name, s.last_name, e.course_id
+                    FROM User s
+                    JOIN Enrollment e ON s.user_id = e.student_id
+                    WHERE e.course_id IN (
+                                SELECT c.course_id
+                                FROM Course c
+                                WHERE c.faculty_id = %s
+                                AND c.course_type = 'active'
+                               ) AND e.status = 'approved'
+                    ORDER BY e.course_id ASC, s.user_id ASC
+                """, (faculty_id,))
+                students = cursor.fetchall()
 
-            if course_choice.lower() == 'b':
-                # Go back to the previous page
-                print("Going back to the previous page.")
-                break
-            else:
-                try:
-                    # Convert choice to integer and validate the course choice
-                    course_idx = int(course_choice)
-                    if 1 <= course_idx <= len(courses):
-                        course_id = courses[course_idx - 1][0]
+                if students:
+                    print(f"\nStudents enrolled:")
+                    for student in students:
+                        print(f"Course ID: {student[3]}, ID: {student[0]}, Name: {student[1]} {student[2]}")
+                else:
+                    print(f"\nNo students found for the course")
 
-                        # Fetch students enrolled in the selected course
-                        cursor.execute("""
-                            SELECT s.student_id, s.first_name, s.last_name
-                            FROM Student s
-                            JOIN Enrollment e ON s.student_id = e.student_id
-                            WHERE e.course_id = %s AND e.status = 'approved'
-                        """, (course_id,))
-                        students = cursor.fetchall()
-
-                        if students:
-                            print(f"\nStudents enrolled in {courses[course_idx - 1][1]}:")
-                            for student in students:
-                                print(f"ID: {student[0]} - {student[1]} {student[2]}")
-                        else:
-                            print(f"\nNo students found for the course: {courses[course_idx - 1][1]}")
-
-                    else:
-                        print("Invalid course number. Please choose a valid course.")
-                except ValueError:
-                    print("Invalid input. Please enter a number.")
+            except ValueError:
+                print("Invalid input. Please enter a number.")
 
         else:
             print("You are not supervising any courses.")
