@@ -1555,7 +1555,7 @@ def add_new_chapter_faculty(textbook_id, faculty_id):
                 """, (chapter_id, chapter_title, textbook_id))
                     conn.commit()
                     print("Chapter added successfully!")
-                    return add_new_section_faculty(chapter_id, faculty_id)  # Redirect to add new section function
+                    return add_new_section_faculty(chapter_id, textbook_id, faculty_id)  # Redirect to add new section function
             
             except mysql.connector.Error as err:
                 print(f"An error occurred: {err}")
@@ -1575,7 +1575,7 @@ def add_new_chapter_faculty(textbook_id, faculty_id):
             print("Invalid choice. Please select 1 or 2.")
 
 
-def modify_chapter_faculty(textbook_id):
+def modify_chapter_faculty(textbook_id, faculty_id):
     while True:
         print("\n===== Modify Chapter =====")
 
@@ -1584,7 +1584,7 @@ def modify_chapter_faculty(textbook_id):
 
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         cursor.execute("SELECT * FROM Chapter WHERE chapter_id = %s AND textbook_id = %s", (chapter_id,textbook_id))
         chapter = cursor.fetchone()
 
@@ -1607,9 +1607,9 @@ def modify_chapter_faculty(textbook_id):
         elif choice == '2':
             delete_chapter(chapter_id,textbook_id)
         elif choice == '3':
-            add_new_section_faculty(chapter_id,textbook_id)
+            add_new_section_faculty(chapter_id,textbook_id, faculty_id)
         elif choice == '4':
-            modify_section_faculty(chapter_id,textbook_id)
+            modify_section_faculty(chapter_id,textbook_id, faculty_id)
         elif choice == '5':
             print("Going back to the previous page...")
             break
@@ -1633,7 +1633,7 @@ def hide_chapter(chapter_id,textbook_id):
             cursor = conn.cursor()
             try:
                 # Mark chapter as hidden
-                cursor.execute("UPDATE Chapter SET hidden = TRUE WHERE chapter_id = %s AND textbook_id = %s", (chapter_id, textbook_id))
+                cursor.execute("UPDATE Chapter SET hidden = 'yes' WHERE chapter_id = %s AND textbook_id = %s", (chapter_id, textbook_id))
                 conn.commit()
                 print(f"Success: Chapter {chapter_id} has been hidden.")
             except mysql.connector.Error as err:
@@ -1724,7 +1724,7 @@ def add_new_section_faculty(chapter_id, textbook_id, faculty_id):
         else:
             print("Invalid choice. Please select 1 or 2.")
 
-def modify_section_faculty(chapter_id,textbook_id):
+def modify_section_faculty(chapter_id,textbook_id, faculty_id):
     while True:
         print("\n===== Modify Section =====")
         section_number = input("Enter Section Number: ")
@@ -1734,10 +1734,14 @@ def modify_section_faculty(chapter_id,textbook_id):
         cursor = conn.cursor()
 
         try:
-            cursor.execute("SELECT * FROM Section WHERE section_number=%s AND chapter_id=%s AND textbook_id = %s", (section_number, chapter_id, textbook_id))
-            section = cursor.fetchone()
+            cursor.execute("""
+                SELECT section_id FROM Section
+                WHERE section_number = %s AND chapter_id = %s AND textbook_id = %s
+            """, (section_number, chapter_id, textbook_id))
 
-            if not section:
+            section_id = cursor.fetchone()[0]
+
+            if not section_id:
                 print(f"Section {section_number} does not exist. Please try again.")
                 cursor.close()
                 conn.close()
@@ -1753,13 +1757,13 @@ def modify_section_faculty(chapter_id,textbook_id):
             choice = input("Enter choice (1-5): ")
 
             if choice == '1':
-                hide_section(section_number)
+                hide_section(section_id)
             elif choice == '2':
-                delete_section(section_number)
+                delete_section(section_id)
             elif choice == '3':
-                add_new_content_block_faculty(section_number)
+                add_new_content_block_faculty(section_number, faculty_id)
             elif choice == '4':
-                modify_content_block_faculty(section_number)
+                modify_content_block_faculty(section_number, faculty_id)
             elif choice == '5':
                 print("Returning to the previous page...")
                 break
@@ -1772,54 +1776,40 @@ def modify_section_faculty(chapter_id,textbook_id):
             conn.close()
 
 
-def hide_section():
+def hide_section(section_id):
     while True:
         print("\n===== Hide Section =====")
-        section_id = input("Enter the Section ID to hide: ")
 
         conn = get_db_connection()
         cursor = conn.cursor()
 
         try:
-            # Check if the section exists
-            cursor.execute("SELECT * FROM Section WHERE section_id=%s", (section_id,))
-            section = cursor.fetchone()
+            print("\n1. Save")
+            print("2. Cancel")
+            choice = input("Enter choice (1-2): ")
 
-            if section:
-                print("\n1. Save")
-                print("2. Cancel")
-                choice = input("Enter choice (1-2): ")
-
-                if choice == '1':
-                    # Hide the section (e.g., set status as 'hidden' or a flag in the DB)
-                    cursor.execute("UPDATE Section SET status='hidden' WHERE section_id=%s", (section_id,))
-                    conn.commit()
-                    print(f"Section {section_id} has been successfully hidden!")
-                elif choice == '2':
-                    print("Cancelling... Returning to the previous page.")
-                    return
-                else:
-                    print("Invalid choice. Please select 1 or 2.")
+            if choice == '1':
+                # Hide the section (e.g., set status as 'hidden' or a flag in the DB)
+                cursor.execute("UPDATE Section SET hidden='yes' WHERE section_id=%s", (section_id,))
+                conn.commit()
+                print(f"Section {section_id} has been successfully hidden!")
+            elif choice == '2':
+                print("Cancelling... Returning to the previous page.")
+                return
             else:
-                print(f"Section with ID {section_id} does not exist. Please try again.")
-
+                print("Invalid choice. Please select 1 or 2.")
         except mysql.connector.Error as err:
-            print(f"An error occurred: {err}")
+            print(f"Failure. An error occurred: {err}")
         finally:
             cursor.close()
             conn.close()
-
-        # Return to previous page after processing
         return
 
 
 
-def delete_section():
+def delete_section(section_id):
     while True:
         print("\n===== Delete Section =====")
-        
-        # Take input from the user for section number
-        section_number = input("Enter Section Number: ")
 
         print("\n1. Save")
         print("2. Cancel")
@@ -1831,19 +1821,11 @@ def delete_section():
             cursor = conn.cursor()
 
             try:
-                # Check if the section exists in the database
-                cursor.execute("SELECT * FROM Section WHERE section_number=%s", (section_number,))
-                section = cursor.fetchone()
-
-                if section:
-                    # Delete the section from the database
-                    cursor.execute("DELETE FROM Section WHERE section_number=%s", (section_number,))
-                    conn.commit()
-                    print(f"Section {section_number} has been successfully deleted.")
-                else:
-                    print("Section not found. Please enter a valid section number.")
+                cursor.execute("DELETE FROM Section WHERE section_id=%s", (section_id,))
+                conn.commit()
+                print(f"Section {section_id} has been successfully deleted.")
             except mysql.connector.Error as err:
-                print(f"An error occurred: {err}")
+                print(f"Failure. An error occurred: {err}")
             finally:
                 cursor.close()
                 conn.close()
@@ -1898,7 +1880,7 @@ def add_new_content_block_faculty(section_id, faculty_id):
             print("Invalid choice. Please select a number between 1 and 4.")
 
 
-def modify_content_block_faculty(section_id):
+def modify_content_block_faculty(section_id, faculty_id):
     while True:
         print("\n===== Modify Content Block =====")
         
@@ -1917,31 +1899,31 @@ def modify_content_block_faculty(section_id):
         choice = input("Enter choice (1-8): ")
 
         if choice == '1':
-            hide_content_block_faculty(content_block_id)  # Hide content block
+            hide_content_block_faculty(section_id, content_block_id)  # Hide content block
             return
 
         elif choice == '2':
-            delete_content_block_faculty(content_block_id)  # Delete content block
+            delete_content_block_faculty(section_id, content_block_id)  # Delete content block
             return
 
         elif choice == '3':
-            add_text_faculty(content_block_id, section_id)  # Add text to content block
+            add_text_faculty(content_block_id, section_id, faculty_id)  # Add text to content block
             return
 
         elif choice == '4':
-            add_picture_faculty(content_block_id,section_id)  # Add picture to content block
+            add_picture_faculty(content_block_id, section_id, faculty_id)  # Add picture to content block
             return
 
         elif choice == '5':
-            hide_activity_faculty(content_block_id)  # Hide activity
+            hide_activity_faculty()  # Hide activity
             return
 
         elif choice == '6':
-            delete_activity_faculty(content_block_id)  # Delete activity
+            delete_activity_faculty()  # Delete activity
             return
 
         elif choice == '7':
-            add_activity_faculty(content_block_id,section_id)  # Add activity
+            add_activity_faculty(content_block_id, section_id, faculty_id)  # Add activity
             return
 
         elif choice == '8':
@@ -1953,12 +1935,9 @@ def modify_content_block_faculty(section_id):
             print("Invalid choice. Please select a number between 1 and 8.")
 
 
-def hide_content_block_faculty(content_block_id):
+def hide_content_block_faculty(section_id, content_block_id):
     while True:
         print("\n===== Hide Content Block =====")
-        
-        # Input Content Block ID
-        content_block_id = input("Enter Content Block ID: ")
 
         print("\n1. Save")
         print("2. Cancel")
@@ -1974,18 +1953,15 @@ def hide_content_block_faculty(content_block_id):
                 cursor.execute("SELECT * FROM ContentBlock WHERE content_block_id = %s", (content_block_id,))
                 content_block = cursor.fetchone()
 
-                if content_block:
-                    # Hide the content block by updating its visibility
-                    cursor.execute("""
-                        UPDATE ContentBlock
-                        SET visible = 0
-                        WHERE content_block_id = %s
-                    """, (content_block_id,))
-                    conn.commit()
-                    print("Content Block hidden successfully!")
-                else:
-                    print(f"Content Block with ID {content_block_id} does not exist.")
-                
+                cursor.execute("""
+                    UPDATE ContentBlock
+                    SET hidden = 'yes'
+                    WHERE content_block_id = %s
+                    AND section_id = %s
+                """, (content_block_id, section_id))
+                conn.commit()
+                print("Content Block hidden successfully!")
+
             except mysql.connector.Error as err:
                 print(f"An error occurred: {err}")
             finally:
@@ -1996,16 +1972,12 @@ def hide_content_block_faculty(content_block_id):
             # Discard the input and go back
             print("Discarding input and going back to the previous menu...")
             return
-
         else:
             print("Invalid choice. Please select 1 or 2.")
 
-def delete_content_block_faculty(content_block_id):
+def delete_content_block_faculty(section_id, content_block_id):
     while True:
         print("\n===== Delete Content Block =====")
-        
-        # Input Content Block ID
-        content_block_id = input("Enter Content Block ID: ")
 
         print("\n1. Save")
         print("2. Cancel")
@@ -2017,18 +1989,10 @@ def delete_content_block_faculty(content_block_id):
             cursor = conn.cursor()
 
             try:
-                # Check if content block exists
-                cursor.execute("SELECT * FROM ContentBlock WHERE content_block_id = %s", (content_block_id,))
-                content_block = cursor.fetchone()
+                cursor.execute("DELETE FROM ContentBlock WHERE content_block_id = %s AND section_id=%s", (content_block_id, section_id))
+                conn.commit()
+                print("Content Block deleted successfully!")
 
-                if content_block:
-                    # Delete the content block from the database
-                    cursor.execute("DELETE FROM ContentBlock WHERE content_block_id = %s", (content_block_id,))
-                    conn.commit()
-                    print("Content Block deleted successfully!")
-                else:
-                    print(f"Content Block with ID {content_block_id} does not exist.")
-                
             except mysql.connector.Error as err:
                 print(f"An error occurred: {err}")
             finally:
@@ -2043,7 +2007,7 @@ def delete_content_block_faculty(content_block_id):
         else:
             print("Invalid choice. Please select 1 or 2.")
 
-def hide_activity_faculty(content_block_id):
+def hide_activity_faculty():
     while True:
         print("\n===== Hide Activity =====")
         
@@ -2068,9 +2032,9 @@ def hide_activity_faculty(content_block_id):
                     # Update the activity status to 'hidden'
                     cursor.execute("""
                         UPDATE Activity
-                        SET is_hidden = %s
+                        SET hidden = 'yes'
                         WHERE activity_id = %s
-                    """, (True, activity_id))
+                    """, (activity_id,))
                     conn.commit()
                     print("Activity hidden successfully!")
                 else:
@@ -2090,7 +2054,7 @@ def hide_activity_faculty(content_block_id):
         else:
             print("Invalid choice. Please select 1 or 2.")
 
-def delete_activity_faculty(content_block_id):
+def delete_activity_faculty():
     while True:
         print("\n===== Delete Activity =====")
         
@@ -2378,7 +2342,7 @@ def go_to_evaluation_course(faculty_id):
             if choice == '1':
                 add_new_chapter_faculty(textbook_id, faculty_id)
             elif choice == '2':
-                modify_chapter_faculty(textbook_id)
+                modify_chapter_faculty(textbook_id, faculty_id)
             elif choice == '3':
                 print("Returning to Faculty Landing Page...")
                 faculty_landing(faculty_id)  # Redirect back to Faculty Landing Page

@@ -95,6 +95,7 @@ CREATE TABLE Section (
     section_number VARCHAR(10) NOT NULL,
     chapter_id VARCHAR(100) NOT NULL,
     textbook_id INTEGER NOT NULL,
+    hidden ENUM('yes', 'no') NOT NULL DEFAULT 'no',
     FOREIGN KEY (textbook_id, chapter_id) REFERENCES Chapter(textbook_id, chapter_id) ON DELETE CASCADE,
     UNIQUE (textbook_id, chapter_id, section_number)
 );
@@ -111,7 +112,7 @@ CREATE TABLE ContentBlock (
 
 -- Activity Table
 CREATE TABLE Activity (
-    activity_id INTEGER PRIMARY KEY,
+    activity_id VARCHAR(20) PRIMARY KEY,
     hidden ENUM('yes', 'no') NOT NULL DEFAULT 'no',
     section_id INTEGER NOT NULL,
     content_block_id VARCHAR(50) NOT NULL,
@@ -130,7 +131,7 @@ CREATE TABLE Question(
     explanation3 TEXT,
     explanation4 TEXT,
     correct_option TEXT,
-    activity_id INTEGER NOT NULL,
+    activity_id VARCHAR(20) NOT NULL,
     FOREIGN KEY (activity_id) REFERENCES Activity(activity_id) ON DELETE CASCADE
 );
 
@@ -138,7 +139,7 @@ CREATE TABLE Question(
 CREATE TABLE Score (
     score INTEGER NOT NULL,
     points INTEGER NOT NULL,
-    activity_id INTEGER NOT NULL REFERENCES Activity(activity_id) ON DELETE CASCADE,
+    activity_id VARCHAR(20) NOT NULL REFERENCES Activity(activity_id) ON DELETE CASCADE,
     student_id VARCHAR(50) NOT NULL REFERENCES Student(student_id) ON DELETE CASCADE,
     timestamp TIMESTAMP NOT NULL,
     PRIMARY KEY (activity_id, student_id)
