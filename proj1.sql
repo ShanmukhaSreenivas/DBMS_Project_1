@@ -43,8 +43,8 @@ CREATE TABLE Course (
     course_token VARCHAR(7),
     capacity INTEGER NOT NULL,
     textbook_id INTEGER NOT NULL,
-    FOREIGN KEY (textbook_id) REFERENCES ETextbook(textbook_id),
-    FOREIGN KEY (faculty_id) REFERENCES User(user_id)
+    FOREIGN KEY (textbook_id) REFERENCES ETextbook(textbook_id)
+    -- FOREIGN KEY (faculty_id) REFERENCES User(user_id)
 );
 
 -- TeachingAssistant Table
@@ -183,3 +183,9 @@ CREATE TABLE Score (
 
 INSERT INTO User (user_id, first_name, last_name, email, password, role)
 VALUES ('blbl2411', 'blah', 'blah2', 'blah@example.com', 'blah', 'admin');
+
+INSERT INTO User (user_id, first_name, last_name, email, password, role)
+VALUES ('facu2411', 'facu', 'cult', 'facult@example.com', 'facu', 'faculty');
+
+INSERT INTO Faculty (faculty_id) VALUES ("facu2411");
+
