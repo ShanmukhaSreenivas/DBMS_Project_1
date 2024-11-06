@@ -261,7 +261,7 @@ def create_e_textbook():
                     conn.commit()
                     print("E-textbook created successfully!")
                     add_new_chapter(textbook_id)  # Redirect to add new chapter function
-                    return  # Go back to the admin landing page after chapter addition
+                    return # Go back to the admin landing page after chapter addition
             except mysql.connector.Error as err:
                 print(f"An error occurred: {err}")
             finally:
@@ -280,7 +280,7 @@ def add_new_chapter(textbook_id):
         print(f"\n===== Add New Chapter to E-textbook (ID: {textbook_id}) =====")
         chapter_id = input("Enter Unique Chapter ID: ")
         chapter_title = input("Enter Chapter Title: ")
-        chapter_number = input("Enter Chapter Number: ")
+        # chapter_number = input("Enter Chapter Number: ")
         print("\n1. Add New Section")
         print("2. Go Back")
         print("3. Landing Page")
@@ -294,13 +294,12 @@ def add_new_chapter(textbook_id):
             try:
                 # Insert the new chapter into the database
                 cursor.execute("""
-                    INSERT INTO Chapter (chapter_id, title, textbook_id, chapter_number)
-                    VALUES (%s, %s, %s, %s)
-                """, (chapter_id, chapter_title, textbook_id, chapter_number))
+                    INSERT INTO Chapter (chapter_id, title, textbook_id)
+                    VALUES (%s, %s, %s)
+                """, (chapter_id, chapter_title, textbook_id))
                 conn.commit()
                 print("Chapter added successfully!")
-                add_new_section(chapter_id,textbook_id)  # Redirect to add new section function
-                return  # Go back to the previous page after section addition
+                return add_new_section(chapter_id,textbook_id)  # Redirect to add new section function
             except mysql.connector.Error as err:
                 print(f"An error occurred: {err}")
             finally:
@@ -310,12 +309,12 @@ def add_new_chapter(textbook_id):
         elif choice == '2':
             # Go back to the previous page without saving
             print("Discarding input. Returning to the previous page...")
-            return  # Return to the previous page
+            return create_e_textbook()  # Return to the previous page
 
         elif choice == '3':
             # Go back to the Admin Landing Page without saving
             print("Discarding input. Returning to the Admin Landing Page...")
-            return  # Return to the Admin Landing Page
+            return admin_home() # Return to the Admin Landing Page
 
         else:
             print("Invalid choice. Please select 1, 2, or 3.")
@@ -329,7 +328,7 @@ def add_new_section(chapter_id,textbook_id):
         cursor = conn.cursor()
 
         # Query to check if the chapter exists
-        cursor.execute("SELECT * FROM Chapter WHERE chapter_id = %s", (chapter_id,))
+        cursor.execute("SELECT * FROM Chapter WHERE chapter_id = %s AND textbook_id = %s", (chapter_id, textbook_id))
         chapter = cursor.fetchone()
 
         if not chapter:
@@ -342,7 +341,7 @@ def add_new_section(chapter_id,textbook_id):
             cursor.close()
             conn.close()
 
-        section_id = input("Enter Unique Section ID: ")
+        # section_id = input("Enter Unique Section ID: ")
         section_number = input("Enter Section Number: ")
         section_title = input("Enter Section Title: ")
         textbook_id = textbook_id
@@ -361,15 +360,18 @@ def add_new_section(chapter_id,textbook_id):
             try:
                 # Insert the new section into the database with textbook_id
                 cursor.execute("""
-                    INSERT INTO Section (section_id, title, chapter_id, section_number, textbook_id)
-                    VALUES (%s, %s, %s, %s, %s)
-                """, (section_id, section_title, chapter_id, section_number, textbook_id))
+                    INSERT INTO Section (title, chapter_id, section_number, textbook_id)
+                    VALUES (%s, %s, %s, %s)
+                """, (section_title, chapter_id, section_number, textbook_id))
                 conn.commit()
+
+                cursor.execute("SELECT section_id FROM Section WHERE chapter_id = %s AND textbook_id = %s AND section_number = %s", (chapter_id, textbook_id, section_number))
+                section_id = cursor.fetchone()[0]
+
                 print("Section added successfully!")
                 
                 # Redirect to add a new content block after adding the section
-                add_new_content_block(section_id)
-                return  # Return to previous menu after adding content block
+                return add_new_content_block(section_id)
             except mysql.connector.Error as err:
                 print(f"An error occurred: {err}")
             finally:
@@ -379,12 +381,12 @@ def add_new_section(chapter_id,textbook_id):
         elif choice == '2':
             # Go back to the previous page without saving
             print("Returning to the previous page...")
-            return
+            return add_new_chapter(textbook_id)
 
         elif choice == '3':
             # Go back to the landing page without saving
             print("Returning to the Admin Landing Page...")
-            return
+            return admin_home()
 
         else:
             print("Invalid choice. Please select 1, 2, or 3.")
@@ -480,27 +482,29 @@ def add_new_content_block(section_id):
             
             choice = input("Enter choice (1-5): ")
             if choice == '1':
-                add_text(content_block_id, section_id)  # Pass section_id to add_text
-
+                return add_text(content_block_id, section_id)  # Pass section_id to add_text
             elif choice == '2':
-                add_picture(content_block_id,section_id)
+                return add_picture(content_block_id,section_id)
             elif choice == '3':
-                add_activity(content_block_id)
+                return add_activity(content_block_id, section_id)
             elif choice == '4':
+                cursor.execute("SELECT chapter_id, textbook_id FROM Section WHERE section_id = %s", (section_id,))
+                result = cursor.fetchone()
+                print("asajsajjsajsajsa")
+                print(result)
+                chapter_id, textbook_id = result
                 print("Discarding input. Returning to the previous page...")
-                return  # Go back to the previous page
+                return add_new_section(chapter_id, textbook_id) # Go back to the previous page
             elif choice == '5':
                 print("Discarding input. Returning to the User Landing Page...")
-                return  # Go back to the User Landing Page
+                return admin_home() # Go back to the User Landing Page
             else:
                 print("Invalid choice. Please enter a number between 1 and 5.")
         except mysql.connector.Error as err:
             print(f"An error occurred: {err}")
             cursor.close()
             conn.close()
-            return
-
-        
+            return   
         
         cursor.close()
         conn.close()
@@ -523,7 +527,7 @@ def add_text(content_block_id, section_id):
             cursor = conn.cursor()
 
             try:
-                cursor.execute("INSERT INTO ContentBlock (block_type, content, section_id) VALUES (%s, %s, %s)", ('text', text_content, section_id))
+                cursor.execute("UPDATE ContentBlock SET block_type = %s, content = %s WHERE content_block_id = %s AND section_id = %s", ('text', text_content, content_block_id, section_id))
                 conn.commit()
                 print(f"Text content added to Content Block {content_block_id} successfully!")
             except mysql.connector.Error as err:
@@ -532,15 +536,15 @@ def add_text(content_block_id, section_id):
                 cursor.close()
                 conn.close()
 
-            return  # Go back to the previous page after adding the text
+            return add_new_content_block(section_id) # Go back to the previous page after adding the text
 
         elif choice == '2':
             print("Discarding input. Returning to the previous page...")
-            return
+            return add_new_content_block(section_id)
 
         elif choice == '3':
             print("Discarding input. Returning to the User Landing Page...")
-            return
+            return admin_home()
 
         else:
             print("Invalid choice. Please select 1, 2, or 3.")
@@ -564,7 +568,7 @@ def add_picture(content_block_id,section_id):
 
             try:
                 # Save picture URL as a content block in the database
-                cursor.execute("INSERT INTO ContentBlock (block_type, content, section_id) VALUES (%s, %s, %s)", ('text',picture_url, section_id))
+                cursor.execute("UPDATE ContentBlock SET block_type = %s, content = %s WHERE content_block_id = %s AND section_id = %s", ('image', picture_url, content_block_id, section_id))
                 conn.commit()
                 print(f"Picture URL added to Content Block {content_block_id} successfully!")
             except mysql.connector.Error as err:
@@ -573,37 +577,35 @@ def add_picture(content_block_id,section_id):
                 cursor.close()
                 conn.close()
 
-            return  # Go back to the previous page after adding the picture
+            return add_new_content_block(section_id) # Go back to the previous page after adding the picture
 
         elif choice == '2':
             # Discard input and go back to the previous page
             print("Discarding input. Returning to the previous page...")
-            return  # Return to the previous page
+            return add_new_content_block(section_id) # Return to the previous page
 
         elif choice == '3':
             # Discard input and return to the user landing page
             print("Discarding input. Returning to the User Landing Page...")
-            return  # Return to the User Landing Page
+            return admin_home() # Return to the User Landing Page
 
         else:
             print("Invalid choice. Please select 1, 2, or 3.")
 
 
-def add_activity(content_block_id):
+def add_activity(content_block_id, section_id):
     while True:
         print(f"\n===== Add Activity to Content Block (ID: {content_block_id}) =====")
         activity_id = input("Enter Unique Activity ID: ")
-        question_text = "Sample question text"  # Replace with actual question if available
-        correct_answer = "Sample correct answer"  # Replace with actual correct answer if available
 
         conn = get_db_connection()
         cursor = conn.cursor()
 
         try:
             cursor.execute("""
-                INSERT INTO Activity (activity_id, content_block_id, question, correct_answer)
-                VALUES (%s, %s, %s, %s)
-            """, (activity_id, content_block_id, question_text, correct_answer))
+                INSERT INTO Activity (activity_id, content_block_id, section_id)
+                VALUES (%s, %s, %s)
+            """, (activity_id, content_block_id, section_id,))
             conn.commit()
             print(f"Activity with ID {activity_id} added successfully to Content Block {content_block_id}.")
         except mysql.connector.Error as err:
@@ -619,41 +621,41 @@ def add_activity(content_block_id):
         choice = input("Enter choice (1-3): ")
 
         if choice == '1':
-            add_question(activity_id)  # Add questions to this activity
+            add_question(activity_id, content_block_id, section_id)  # Add questions to this activity
             return  # Return to previous page after adding the question
 
         elif choice == '2':
             print("Discarding input. Returning to the previous page...")
-            return  # Return to the previous page
+            return add_new_content_block(section_id) # Return to the previous page
 
         elif choice == '3':
             print("Discarding input. Returning to the User Landing Page...")
-            return  # Return to the User Landing Page
+            return admin_home() # Return to the User Landing Page
 
         else:
             print("Invalid choice. Please select 1, 2, or 3.")
 
 
-def add_question(activity_id):
+def add_question(activity_id, content_block_id, section_id):
     while True:
         print("\n===== Add Question =====")
+
+        question_id = input("Enter Question ID: ")
         question_text = input("Enter Question Text: ")
         
         option1_text = input("Enter Option 1 Text: ")
         option1_explanation = input("Enter Option 1 Explanation: ")
-        option1_label = input("Is Option 1 Correct or Incorrect? (Enter Correct/Incorrect): ")
         
         option2_text = input("Enter Option 2 Text: ")
         option2_explanation = input("Enter Option 2 Explanation: ")
-        option2_label = input("Is Option 2 Correct or Incorrect? (Enter Correct/Incorrect): ")
         
         option3_text = input("Enter Option 3 Text: ")
         option3_explanation = input("Enter Option 3 Explanation: ")
-        option3_label = input("Is Option 3 Correct or Incorrect? (Enter Correct/Incorrect): ")
         
         option4_text = input("Enter Option 4 Text: ")
         option4_explanation = input("Enter Option 4 Explanation: ")
-        option4_label = input("Is Option 4 Correct or Incorrect? (Enter Correct/Incorrect): ")
+
+        correct_option = input("Enter Correct Option (1-4): ")
         
         print("\n1. Save")
         print("2. Cancel")
@@ -667,9 +669,9 @@ def add_question(activity_id):
 
             try:
                 cursor.execute("""
-                    INSERT INTO Activity (question, correct_answer, incorrect_answer1, incorrect_answer2, incorrect_answer3, explanation, content_block_id)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
-                """, (question_text, option1_text, option2_text, option3_text, option4_text, "Explanation text", activity_id))
+                    INSERT INTO Question (question_id, question_text, option1, option2, option3, option4, explanation1, explanation2, explanation3, explanation4, correct_option, activity_id)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (question_id, question_text, option1_text, option2_text, option3_text, option4_text, option1_explanation, option2_explanation, option3_explanation, option4_explanation, correct_option, activity_id))
                 conn.commit()
                 print("Question and options added successfully!")
             except mysql.connector.Error as err:
@@ -677,11 +679,11 @@ def add_question(activity_id):
             finally:
                 cursor.close()
                 conn.close()
-            return  # Go back to the previous menu after saving
+            return add_activity(content_block_id, section_id) # Go back to the previous menu after saving
 
         elif choice == '2':
             print("Discarding input. Returning to Add Activity page...")
-            return  # Return to Add Activity page
+            return add_activity(content_block_id, section_id) # Return to Add Activity page
 
         elif choice == '3':
             print("Discarding input. Returning to Admin Landing Page...")
@@ -725,12 +727,12 @@ def modify_etextbook():
         if choice == '1':
             # Redirect to add a new chapter
             add_new_chapter(textbook_id)
-            return  # Return to previous menu after adding the chapter
+            return modify_etextbook() # Return to previous menu after adding the chapter
 
         elif choice == '2':
             # Redirect to modify an existing chapter
             modify_chapter(textbook_id)
-            return  # Return to previous menu after modifying the chapter
+            return modify_etextbook() # Return to previous menu after modifying the chapter
 
         elif choice == '3':
             # Go back to the previous page without saving
@@ -777,12 +779,12 @@ def modify_chapter(textbook_id):
         if choice == '1':
             # Redirect to add new section
             add_new_section(chapter_id,textbook_id)
-            return  # Return after handling section addition
+            return modify_chapter(textbook_id) # Return after handling section addition
 
         elif choice == '2':
             # Redirect to modify an existing section
             modify_section(chapter_id,textbook_id)
-            return  # Return after handling section modification
+            return modify_chapter(textbook_id)  # Return after handling section modification
 
         elif choice == '3':
             # Go back to the previous page
@@ -802,7 +804,7 @@ def modify_section(chapter_id,textbook_id):
     while True:
         print("\n===== Modify Section =====")
 
-        section_id = input("Enter Section ID: ")
+        section_num = input("Enter Section Number: ")
 
         # Validate the E-textbook ID, Chapter ID, and Section Number
         conn = get_db_connection()
@@ -811,14 +813,15 @@ def modify_section(chapter_id,textbook_id):
         try:
             # Check if the E-textbook, chapter, and section exist in the database
             cursor.execute("""
-                SELECT * FROM Section
-                WHERE section_id = %s AND chapter_id = %s AND chapter_id IN (SELECT chapter_id FROM Chapter WHERE textbook_id = %s)
-            """, (section_id, chapter_id, textbook_id))
+                SELECT section_id FROM Section
+                WHERE section_number = %s AND chapter_id = %s AND textbook_id = %s
+            """, (section_num, chapter_id, textbook_id))
 
-            section = cursor.fetchone()
+            section_id = cursor.fetchone()[0]
 
-            if not section:
+            if not section_id:
                 print("Section not found for the given E-textbook ID, Chapter ID, and Section number. Please try again.")
+                continue
             else:
                 print("Section found successfully!")
 
@@ -832,11 +835,11 @@ def modify_section(chapter_id,textbook_id):
 
                 if choice == '1':
                     add_new_content_block(section_id)
-                    return  # Go back after adding the content block
+                    return modify_section(chapter_id, textbook_id) # Go back after adding the content block
 
                 elif choice == '2':
                     modify_content_block(section_id)
-                    return  # Go back after modifying the content block
+                    return modify_section(chapter_id, textbook_id) # Go back after modifying the content block
 
                 elif choice == '3':
                     print("Returning to the previous page...")
@@ -884,15 +887,15 @@ def modify_content_block(section_id):
 
                 if choice == '1':
                     add_text(content_block_id,section_id)
-                    return  # Return after adding text
+                    return modify_content_block(section_id) # Return after adding text
 
                 elif choice == '2':
                     add_picture(content_block_id,section_id)
-                    return  # Return after adding a picture
+                    return modify_content_block(section_id) # Return after adding a picture
 
                 elif choice == '3':
                     add_activity(content_block_id)
-                    return  # Return after adding an activity
+                    return modify_content_block(section_id) # Return after adding an activity
 
                 elif choice == '4':
                     print("Returning to the previous page...")
@@ -969,21 +972,21 @@ def create_new_active_course():
 
                 # Insert the new active course into the database
                 cursor.execute("""
-                    INSERT INTO Course (course_id, course_title, faculty_id, start_date, end_date, course_token, capacity, course_type, textbook_id)
+                    INSERT INTO Course (course_id, title, faculty_id, start_date, end_date, course_type, course_token, capacity, textbook_id)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, (course_id, course_title, faculty_id, start_date, end_date, course_token, capacity, 'active', textbook_id))
+                """, (course_id, course_title, faculty_id, start_date, end_date, 'active', course_token, capacity, textbook_id))
 
                 # Commit the changes to the database
                 conn.commit()
 
                 # Insert into the Faculty table
-                cursor.execute("""
-                    INSERT INTO Faculty (faculty_id, course_id)
-                    VALUES (%s, %s)
-                """, (faculty_id, course_id))
+                # cursor.execute("""
+                #     INSERT INTO Faculty (faculty_id, course_id)
+                #     VALUES (%s, %s)
+                # """, (faculty_id, course_id))
 
                 # Commit the changes for the Faculty table
-                conn.commit()
+                # conn.commit()
 
                 print("New Active Course created successfully!")
 
@@ -1057,9 +1060,9 @@ def create_new_eval_course():
 
                 # Insert the new evaluation course into the database
                 cursor.execute("""
-                    INSERT INTO Course (course_id, course_title, faculty_id, start_date, end_date, course_token, capacity, course_type, textbook_id)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, 'evaluation', %s)
-                """, (course_id, course_title, faculty_id, start_date, end_date, token, capacity, textbook_id))
+                    INSERT INTO Course (course_id, title, faculty_id, start_date, end_date, course_type, course_token, capacity, textbook_id)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (course_id, course_title, faculty_id, start_date, end_date, 'evaluation', token, capacity, textbook_id))
                 conn.commit()
 
                 print("New Evaluation Course created successfully!")
@@ -1080,9 +1083,6 @@ def create_new_eval_course():
 
         else:
             print("Invalid choice. Please select 1, 2, or 3.")
-
-
-
 
 
 

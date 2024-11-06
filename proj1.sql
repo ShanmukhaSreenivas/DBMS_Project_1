@@ -1,3 +1,4 @@
+DROP DATABASE proj1;
 CREATE DATABASE proj1;
 USE proj1;
 
@@ -25,7 +26,7 @@ CREATE TABLE Faculty (
 
 -- ETextbook Table
 CREATE TABLE ETextbook (
-    textbook_id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    textbook_id INTEGER PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     admin_id VARCHAR(50) REFERENCES Admin(admin_id) ON DELETE SET NULL,
     faculty_id VARCHAR(50) REFERENCES Faculty(faculty_id) ON DELETE SET NULL
@@ -39,7 +40,7 @@ CREATE TABLE Course (
     start_date DATE NOT NULL,
     end_date DATE NOT NULL,
     course_type ENUM('active', 'evaluation') NOT NULL,
-    course_token VARCHAR(7) NOT NULL,
+    course_token VARCHAR(7),
     capacity INTEGER NOT NULL,
     textbook_id INTEGER NOT NULL,
     FOREIGN KEY (textbook_id) REFERENCES ETextbook(textbook_id),
@@ -80,9 +81,10 @@ CREATE TABLE Notification (
 CREATE TABLE Chapter (
     chapter_id VARCHAR(100),
     title VARCHAR(255) NOT NULL,
-    chapter_number INTEGER NOT NULL,
+    -- chapter_number INTEGER NOT NULL,
     textbook_id INTEGER NOT NULL REFERENCES ETextbook(textbook_id) ON DELETE CASCADE,
-    UNIQUE (textbook_id, chapter_number),
+    -- UNIQUE (textbook_id, chapter_number),
+    hidden ENUM('yes', 'no') NOT NULL DEFAULT 'no',
     PRIMARY KEY (textbook_id, chapter_id)
 );
 
@@ -90,31 +92,46 @@ CREATE TABLE Chapter (
 CREATE TABLE Section (
     section_id INTEGER PRIMARY KEY AUTO_INCREMENT,
     title VARCHAR(255) NOT NULL,
-    section_number INTEGER NOT NULL,
-    chapter_id VARCHAR(100) NOT NULL REFERENCES Chapter(chapter_id) ON DELETE CASCADE,
-    textbook_id INTEGER NOT NULL REFERENCES ETextbook(textbook_id) ON DELETE CASCADE,
-    UNIQUE (chapter_id, section_number)
+    section_number VARCHAR(10) NOT NULL,
+    chapter_id VARCHAR(100) NOT NULL,
+    textbook_id INTEGER NOT NULL,
+    FOREIGN KEY (textbook_id, chapter_id) REFERENCES Chapter(textbook_id, chapter_id) ON DELETE CASCADE,
+    UNIQUE (textbook_id, chapter_id, section_number)
 );
 
 -- ContentBlock Table
 CREATE TABLE ContentBlock (
-    content_block_id INTEGER PRIMARY KEY AUTO_INCREMENT,
-    block_type VARCHAR(50) NOT NULL,
-    content ENUM('text', 'image') NOT NULL,
-    hidden TINYINT,
-    section_id INTEGER NOT NULL REFERENCES Section(section_id) ON DELETE CASCADE
+    content_block_id VARCHAR(50),
+    block_type ENUM('text', 'image') NOT NULL DEFAULT 'text',
+    content VARCHAR(50),
+    hidden ENUM('yes', 'no') NOT NULL DEFAULT 'no',
+    section_id INTEGER NOT NULL REFERENCES Section(section_id) ON DELETE CASCADE,
+    PRIMARY KEY (section_id, content_block_id)
 );
 
 -- Activity Table
 CREATE TABLE Activity (
-    activity_id INTEGER PRIMARY KEY AUTO_INCREMENT,
-    question TEXT NOT NULL,
-    correct_answer TEXT NOT NULL,
-    incorrect_answer1 TEXT NOT NULL,
-    incorrect_answer2 TEXT NOT NULL,
-    incorrect_answer3 TEXT NOT NULL,
-    explanation TEXT NOT NULL,
-    content_block_id INTEGER NOT NULL REFERENCES ContentBlock(content_block_id) ON DELETE CASCADE
+    activity_id INTEGER PRIMARY KEY,
+    hidden ENUM('yes', 'no') NOT NULL DEFAULT 'no',
+    section_id INTEGER NOT NULL,
+    content_block_id VARCHAR(50) NOT NULL,
+    FOREIGN KEY (section_id, content_block_id) REFERENCES ContentBlock(section_id, content_block_id) ON DELETE CASCADE
+);
+
+CREATE TABLE Question(
+    question_id INTEGER PRIMARY KEY,
+    question_text TEXT NOT NULL,
+    option1 TEXT,
+    option2 TEXT,
+    option3 TEXT,
+    option4 TEXT,
+    explanation1 TEXT,
+    explanation2 TEXT,
+    explanation3 TEXT,
+    explanation4 TEXT,
+    correct_option TEXT,
+    activity_id INTEGER NOT NULL,
+    FOREIGN KEY (activity_id) REFERENCES Activity(activity_id) ON DELETE CASCADE
 );
 
 -- Score Table
@@ -162,3 +179,7 @@ CREATE TABLE Score (
 -- VALUES ('blbl2411', 'blah', 'blah2', 'blah@example.com', 'blah', 'admin');
 
 -- SELECT * FROM User;
+
+
+INSERT INTO User (user_id, first_name, last_name, email, password, role)
+VALUES ('blbl2411', 'blah', 'blah2', 'blah@example.com', 'blah', 'admin');
