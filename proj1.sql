@@ -40,7 +40,7 @@ CREATE TABLE Course (
     start_date DATE NOT NULL,
     end_date DATE NOT NULL,
     course_type ENUM('active', 'evaluation') NOT NULL,
-    course_token VARCHAR(7),
+    course_token VARCHAR(7) UNIQUE,
     capacity INTEGER,
     textbook_id INTEGER NOT NULL,
     FOREIGN KEY (textbook_id) REFERENCES ETextbook(textbook_id)

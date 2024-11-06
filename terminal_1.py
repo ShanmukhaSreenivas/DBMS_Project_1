@@ -5,8 +5,8 @@ from datetime import datetime
 def get_db_connection():
     return mysql.connector.connect(
         host="127.0.0.1",
-        user="root",  # Replace with your username
-        password="kemaforogan",  # Replace with your password
+        user="springstudent",  # Replace with your username
+        password="springstudent",  # Replace with your password
         database="proj1"  # Replace with your database name
     )
 
@@ -28,7 +28,7 @@ def start_menu():
         elif choice == '3':
             login('ta')
         elif choice == '4':
-            login('student')
+            student_login()
         elif choice == '5':
             print("Exiting the application.")
             break
@@ -76,13 +76,10 @@ def login(user_type):
         elif choice == '2':
             # Discard input and go back to the home page
             print("Going back to the Main Menu...")
-            start_menu()  # Redirects back to the start menu
-            break
+            return start_menu()  # Redirects back to the start menu
 
         else:
             print("Invalid choice. Please enter 1 or 2.")
-
-
 
 def admin_home():
     while True:
@@ -1228,16 +1225,15 @@ def go_to_active_course(faculty_id):
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM Course WHERE course_type = 'active' AND faculty_id = %s AND course_id = %s", (faculty_id, course_id,))
         active_course = cursor.fetchone()
-
-        cursor.execute("SELECT textbook_id FROM Course WHERE course_id = %s", (course_id,))
-        textbook_id = cursor.fetchone()[0]
-
+        
         if not active_course:
             print("Invalid Course ID. Please try again.")
             cursor.close()
             conn.close()
             continue
         else:
+            cursor.execute("SELECT textbook_id FROM Course WHERE course_id = %s", (course_id,))
+            textbook_id = cursor.fetchone()[0]
             # Display Active Course Menu
             print(f"\n===== Active Course Menu (Course ID: {course_id}) =====")
             print("1. View Worklist")
@@ -1308,7 +1304,7 @@ def view_worklist(faculty_id):
 
             if choice == '1':
                 print("Returning to the Faculty: Active Course page...")
-                go_to_active_course()  # Assuming you have a function for the Faculty Active Course page
+                go_to_active_course(faculty_id)  # Assuming you have a function for the Faculty Active Course page
                 break
             else:
                 print("Invalid choice. Please select 1.")
@@ -1537,6 +1533,7 @@ def add_new_chapter_faculty(textbook_id, faculty_id):
 
                 if existing_chapter:
                     print("A chapter with this ID already exists. Please try again with a different ID.")
+                    return add_new_chapter_faculty(textbook_id)
                 else:
                     # Insert new chapter into the database
                     cursor.execute("""
@@ -1609,7 +1606,7 @@ def modify_chapter_faculty(textbook_id, faculty_id):
         cursor.close()
         conn.close()
 
-def hide_chapter(chapter_id,textbook_id):
+def hide_chapter(chapter_id, textbook_id):
     while True:
         print("\n===== Hide Chapter =====")
         print("1. Save")
@@ -1618,28 +1615,27 @@ def hide_chapter(chapter_id,textbook_id):
         choice = input("Enter choice (1-2): ")
 
         if choice == '1':
-            # Perform the action to hide the chapter
+            # Call the hide_chapter stored procedure
             conn = get_db_connection()
             cursor = conn.cursor()
             try:
-                # Mark chapter as hidden
-                cursor.execute("UPDATE Chapter SET hidden = 'yes' WHERE chapter_id = %s AND textbook_id = %s", (chapter_id, textbook_id))
-                conn.commit()
-                print(f"Success: Chapter {chapter_id} has been hidden.")
+                cursor.callproc('hide_chapter', [chapter_id, textbook_id])
+                for result in cursor.stored_results():
+                    print(result.fetchone()[0])  # Print the success or error message
             except mysql.connector.Error as err:
                 print(f"Failed: An error occurred - {err}")
             finally:
                 cursor.close()
                 conn.close()
-            break
+            break  # Exit the loop after performing the action
         elif choice == '2':
             print("Cancelled: Returning to the previous page.")
-            break
+            break  # Exit the loop without performing any action
         else:
             print("Invalid choice. Please enter 1 or 2.")
 
 
-def delete_chapter(chapter_id,textbook_id):
+def delete_chapter(chapter_id, textbook_id):
     while True:
         print("\n===== Delete Chapter =====")
         print("1. Save")
@@ -1648,23 +1644,22 @@ def delete_chapter(chapter_id,textbook_id):
         choice = input("Enter choice (1-2): ")
 
         if choice == '1':
-            # Perform the action to delete the chapter
+            # Call the delete_chapter stored procedure
             conn = get_db_connection()
             cursor = conn.cursor()
             try:
-                # Delete chapter
-                cursor.execute("DELETE FROM Chapter WHERE chapter_id = %s AND textbook_id = %s", (chapter_id, textbook_id))
-                conn.commit()
-                print(f"Success: Chapter {chapter_id} has been deleted.")
+                cursor.callproc('delete_chapter', [chapter_id, textbook_id])
+                for result in cursor.stored_results():
+                    print(result.fetchone()[0])  # Print the success or error message
             except mysql.connector.Error as err:
                 print(f"Failed: An error occurred - {err}")
             finally:
                 cursor.close()
                 conn.close()
-            break
+            break  # Exit the loop after performing the action
         elif choice == '2':
             print("Cancelled: Returning to the previous page.")
-            break
+            break  # Exit the loop without performing any action
         else:
             print("Invalid choice. Please enter 1 or 2.")
 
@@ -1690,6 +1685,7 @@ def add_new_section_faculty(chapter_id, textbook_id, faculty_id):
 
                 if existing_section:
                     print(f"A section with number {section_number} already exists for this chapter.")
+                    return add_new_section_faculty(chapter_id, textbook_id, faculty_id)
                 else:
                     # Insert the new section into the database with the correct column name
                     cursor.execute("""
@@ -1769,67 +1765,59 @@ def modify_section_faculty(chapter_id,textbook_id, faculty_id):
 def hide_section(section_id):
     while True:
         print("\n===== Hide Section =====")
-
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
-        try:
-            print("\n1. Save")
-            print("2. Cancel")
-            choice = input("Enter choice (1-2): ")
-
-            if choice == '1':
-                # Hide the section (e.g., set status as 'hidden' or a flag in the DB)
-                cursor.execute("UPDATE Section SET hidden='yes' WHERE section_id=%s", (section_id,))
-                conn.commit()
-                print(f"Section {section_id} has been successfully hidden!")
-            elif choice == '2':
-                print("Cancelling... Returning to the previous page.")
-                return
-            else:
-                print("Invalid choice. Please select 1 or 2.")
-        except mysql.connector.Error as err:
-            print(f"Failure. An error occurred: {err}")
-        finally:
-            cursor.close()
-            conn.close()
-        return
-
-
-
-def delete_section(section_id):
-    while True:
-        print("\n===== Delete Section =====")
-
-        print("\n1. Save")
+        print("1. Save")
         print("2. Cancel")
+
         choice = input("Enter choice (1-2): ")
 
         if choice == '1':
-            # Validate and delete the section from the database
+            # Call the hide_section stored procedure
             conn = get_db_connection()
             cursor = conn.cursor()
-
             try:
-                cursor.execute("DELETE FROM Section WHERE section_id=%s", (section_id,))
-                conn.commit()
-                print(f"Section {section_id} has been successfully deleted.")
+                cursor.callproc('hide_section', [section_id])
+                for result in cursor.stored_results():
+                    print(result.fetchone()[0])  # Print the success or error message
             except mysql.connector.Error as err:
                 print(f"Failure. An error occurred: {err}")
             finally:
                 cursor.close()
                 conn.close()
-
-            return  # Go back to the previous page after deletion
-
+            break  # Exit after action is performed
         elif choice == '2':
-            # Discard the input and return to the previous page
-            print("Discarding input. Returning to the previous page...")
-            return  # Exit the function and return to the previous menu
-
+            print("Cancelled: Returning to the previous page.")
+            break  # Exit without any action
         else:
-            print("Invalid choice. Please select 1 or 2.")
+            print("Invalid choice. Please enter 1 or 2.")
 
+
+def delete_section(section_id):
+    while True:
+        print("\n===== Delete Section =====")
+        print("1. Save")
+        print("2. Cancel")
+
+        choice = input("Enter choice (1-2): ")
+
+        if choice == '1':
+            # Call the delete_section stored procedure
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            try:
+                cursor.callproc('delete_section', [section_id])
+                for result in cursor.stored_results():
+                    print(result.fetchone()[0])  # Print the success or error message
+            except mysql.connector.Error as err:
+                print(f"Failure. An error occurred: {err}")
+            finally:
+                cursor.close()
+                conn.close()
+            break  # Exit after action is performed
+        elif choice == '2':
+            print("Cancelled: Returning to the previous page.")
+            break  # Exit without any action
+        else:
+            print("Invalid choice. Please enter 1 or 2.")
 
 
 def add_new_content_block_faculty(section_id, faculty_id):
@@ -2321,9 +2309,6 @@ def go_to_evaluation_course(faculty_id):
         cursor.execute("SELECT * FROM Course WHERE course_type = 'evaluation' AND faculty_id = faculty_id AND course_id = %s", (course_id,))
         evaluation_course = cursor.fetchone()
 
-        cursor.execute("SELECT textbook_id FROM Course WHERE course_id = %s", (course_id,))
-        textbook_id = cursor.fetchone()[0]
-
         if not evaluation_course:
             print("Invalid Course ID. Please try again.")
             cursor.close()
@@ -2331,6 +2316,8 @@ def go_to_evaluation_course(faculty_id):
             continue
         else:
             # Display Evaluation Course Menu
+            cursor.execute("SELECT textbook_id FROM Course WHERE course_id = %s", (course_id,))
+            textbook_id = cursor.fetchone()[0]
             print(f"\n===== Evaluation Course Menu (Course ID: {course_id}) =====")
             print("1. Add New Chapter")
             print("2. Modify Chapters")
@@ -2352,10 +2339,6 @@ def go_to_evaluation_course(faculty_id):
 
         cursor.close()
         conn.close()
-
-
-
-
 
 def view_courses(faculty_id):
     while True:
@@ -2717,6 +2700,7 @@ def ta_add_new_section(chapter_id, textbook_id, ta_id):
         cursor.execute("SELECT * FROM Section WHERE section_number=%s AND chapter_id=%s AND textbook_id = %s", (section_number, chapter_id, textbook_id))
         if cursor.fetchone():
             print("Section already exists with this number. Please try another section number.")
+            return ta_add_new_section(chapter_id, textbook_id, ta_id)
         else:
             # Section does not exist, proceed to add
             print("\n1. Add New Content Block")
@@ -3299,22 +3283,38 @@ def enroll_in_course():
 
             try:
                 # Check if the student is already enrolled in the system
-                cursor.execute("SELECT * FROM Students WHERE email=%s", (email,))
-                student = cursor.fetchone()
+                cursor.execute("SELECT user_id FROM User WHERE email=%s AND role = 'student'", (email,))
+                student_id = cursor.fetchone()
+                
+                cursor.execute("SELECT course_id FROM Course WHERE course_token=%s AND course_type = 'active'", (course_token,))
+                course_id = cursor.fetchone()
+                
+                if not course_id:
+                    print(f"Invalid course token.")
+                    continue
+                
+                course_id = course_id[0]
 
-                if student:
+                if student_id:
                     # Student exists, just enroll them in the course
+                    student_id = student_id[0]
                     print(f"Student already exists. Adding to course with token {course_token}.")
-                    cursor.execute("INSERT INTO Enrollment (student_id, course_token, status) VALUES (%s, %s, %s)", 
-                                   (student['id'], course_token, 'waiting'))
+                    cursor.execute("INSERT INTO Enrollment (student_id, course_id, status) VALUES (%s, %s, %s)", 
+                                   (student_id, course_id, 'pending'))
                 else:
                     # Student doesn't exist, create a new student entry and enroll them
                     print(f"Creating a new student and adding to course with token {course_token}.")
-                    cursor.execute("INSERT INTO Students (first_name, last_name, email) VALUES (%s, %s, %s)", 
-                                   (first_name, last_name, email))
-                    new_student_id = cursor.lastrowid
-                    cursor.execute("INSERT INTO Enrollment (student_id, course_token, status) VALUES (%s, %s, %s)", 
-                                   (new_student_id, course_token, 'waiting'))
+                    user_id_prefix = first_name[:2] + last_name[:2]
+                    current_date = datetime.now()
+                    user_id_date = current_date.strftime("%y%m")
+                    student_id = user_id_prefix + user_id_date
+                    print(f"Generated User ID: {student_id}")
+                    cursor.execute("INSERT INTO User (user_id, first_name, last_name, email, password, role) VALUES (%s, %s, %s, %s, %s, %s)", 
+                                   (student_id, first_name, last_name, email, 'defaultpassword', 'student'))
+                    cursor.execute("INSERT INTO Student (student_id) VALUES (%s)", 
+                                   (student_id,))
+                    cursor.execute("INSERT INTO Enrollment (student_id, course_id, status) VALUES (%s, %s, %s)", 
+                                   (student_id, course_id, 'pending'))
 
                 conn.commit()
                 print(f"Enrollment request submitted. You have been added to the waiting list for course {course_token}.")
@@ -3352,13 +3352,13 @@ def student_sign_in():
             cursor = conn.cursor()
 
             try:
-                cursor.execute("SELECT * FROM Students WHERE user_id=%s AND password=%s", (user_id, password))
+                cursor.execute("SELECT * FROM User WHERE user_id=%s AND password=%s AND role='student'", (user_id, password))
                 student = cursor.fetchone()
 
                 if student:
                     print("Login successful. Redirecting to Student Landing Page...")
                     # Redirect to the student landing page (function to be implemented)
-                    student_landing_page(student['id'])  # Passing student id for further operations
+                    student_landing_page(student[0])  # Passing student id for further operations
                 else:
                     print("Login Incorrect. Please check your credentials and try again.")
 
@@ -3376,22 +3376,28 @@ def student_sign_in():
         else:
             print("Invalid choice. Please select 1 or 2.")
 
-# Example Student Landing Page (to be customized based on requirements)
-def student_landing_page(student_id):
-    print(f"Welcome, student {student_id}!")
-    # Add functionality for student's landing page here.
+
 def student_landing_page(student_id):
     while True:
         print("\n===== Student Landing Page =====")
-        print("E-book 1")
-        print("Chapter 1")
-        print("\tSection 1")
-        print("\t\tBlock 1")
-        print("\tSection 2")
-        print("\t\tBlock 2")
-        print("Chapter 2")
-        print("\tSection 1")
-        print("\t\tBlock 1")
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT DISTINCT c.textbook_id from course c WHERE c.course_id IN (SELECT DISTINCT e.course_id FROM enrollment e WHERE e.student_id = %s AND e.status='approved')", (student_id,))
+        textbook_ids = cursor.fetchall()
+        for textbook_id in textbook_ids:
+            print(f"E-book {textbook_id[0]}")
+            cursor.execute("SELECT chapter_id FROM Chapter WHERE textbook_id=%s", (textbook_id[0],))
+            chapter_ids = cursor.fetchall()
+            for chapter_id in chapter_ids:
+                print(f"Chapter {chapter_id[0]}")
+                cursor.execute("SELECT section_id, section_number FROM Section WHERE textbook_id=%s AND chapter_id=%s", (textbook_id[0], chapter_id[0]))
+                sections = cursor.fetchall()
+                for section in sections:
+                    print(f"\tSection {section[1]}")
+                    cursor.execute("SELECT content_block_id FROM ContentBlock WHERE section_id=%s", (section[0],))
+                    block_ids = cursor.fetchall()
+                    for block_id in block_ids:
+                        print(f"\t\tBlock {block_id[0]}")
 
         print("\nMenu:")
         print("1. View a section")
@@ -3409,7 +3415,7 @@ def student_landing_page(student_id):
         elif choice == '3':
             # Logout and return to the login or home page
             print("Logging out... Returning to the home page.")
-            return
+            return start_menu()
         else:
             print("Invalid choice. Please select 1, 2, or 3.")
 
@@ -3417,17 +3423,18 @@ def student_landing_page(student_id):
 def view_section(student_id):
     while True:
         print("\n===== View Section =====")
+        textbook_id = input("Enter Textbook ID: ")
         chapter_id = input("Enter Chapter ID: ")
-        section_id = input("Enter Section ID: ")
+        section_num = input("Enter Section Number: ")
         # Check if the Chapter ID and Section ID exist in the database
         conn = get_db_connection()
         cursor = conn.cursor()
 
         try:
-            cursor.execute("SELECT COUNT(*) FROM Sections WHERE chapter_id = %s AND section_id = %s", (chapter_id, section_id))
-            (count,) = cursor.fetchone()
+            cursor.execute("SELECT section_id FROM Section WHERE textbook_id = %s AND chapter_id = %s AND section_number = %s", (textbook_id, chapter_id, section_num))
+            (section_id,) = cursor.fetchone()
 
-            if count == 0:
+            if not section_id:
                 print("Invalid Chapter ID or Section ID. Please enter valid details.")
                 continue  # Return to the input prompt if IDs are invalid
 
@@ -3445,32 +3452,32 @@ def view_section(student_id):
 
         if choice == '1':
             # Proceed to view the block in the section
-            view_block(chapter_id, section_id, student_id)
+            view_block(textbook_id, chapter_id, section_id, student_id)
         elif choice == '2':
-            print("Going back to the landing page...")
+            print("Going back to the previous page...")
             return  # Goes back to the student landing page
         else:
             print("Invalid choice. Please select 1 or 2.")
 
-def view_block(chapter_id, section_id, student_id):
+def view_block(textbook_id, chapter_id, section_id, student_id):
     conn = get_db_connection()
     cursor = conn.cursor()
 
     try:
         # Fetch block details for the given chapter and section
-        cursor.execute("SELECT content_block_id, block_type, content FROM Blocks WHERE chapter_id = %s AND section_id = %s", (chapter_id, section_id))
+        cursor.execute("SELECT content_block_id, block_type, content FROM ContentBlock WHERE section_id = %s", (section_id,))
         blocks = cursor.fetchall()
 
         if not blocks:
-            print(f"No blocks found for Chapter {chapter_id}, Section {section_id}")
+            print(f"No blocks found for Section {section_id}")
             return
 
         for block_id, block_type, content in blocks:
             print(f"\n===== Viewing Block {block_id} =====")
-            if block_type == 'content':
+            if block_type == 'text' or block_type == 'picture':
                 # If it's content, display the content and proceed
                 print(f"Content: {content}")
-                print("1. Next/Submit")
+                print("1. Next")
                 print("2. Go Back")
                 choice = input("Choose an option (1-2): ")
 
@@ -3483,25 +3490,61 @@ def view_block(chapter_id, section_id, student_id):
                     print("Invalid option. Please try again.")
                     return
             elif block_type == 'activity':
-                # If it's an activity (question), prompt the user for the answer
-                print(f"Activity: {content}")
-                options = get_activity_options(block_id)  # You'd retrieve activity options here
-                for idx, option in enumerate(options, start=1):
-                    print(f"{idx}. {option}")
+                print(f"Activity")
+                activity_id = content
+                cursor.execute("SELECT question_id, question_text, option1, option2, option3, option4, explanation1, explanation2, explanation3, explanation4, correct_option FROM Question WHERE section_id = %s AND content_block_id = %s AND activity_id = %s", (section_id, block_id, activity_id))
+                
+                question = cursor.fetchone()
+                
+                question_id, question_text = question[0], question[1]
+                options = [question[2], question[3], question[4], question[5]]
+                explanations = [question[6], question[7], question[8], question[9]]
+                correct_answer = question[10]
+                
+                print(correct_answer)
+                
+                print(f"Question: {question_text}")
+                
+                print("Options:")
+                for idx, option in enumerate(options):
+                    print(f"{idx + 1}. {option}")
 
-                correct_answer = input("Enter the correct answer (1-4): ")
-                if correct_answer == get_correct_answer(block_id):  # Validate the answer
-                    print("Correct! Proceeding to the next block.")
-                else:
-                    print("Incorrect answer. Here's the explanation...")
-                    explanation = get_explanation(block_id)  # Fetch explanation for the wrong answer
-                    print(explanation)
-
-                print("1. Next/Submit")
+                user_answer = int(input("Enter the correct answer (1-4): "))
+                
+                print("1. Submit")
                 print("2. Go Back")
                 choice = input("Choose an option (1-2): ")
+                
+                # cursor.execute(
+                #     "SELECT score_id Score WHERE textbook_id=%s AND chapter_id=%s AND section_id=%s AND content_block_id=%s AND activity_id=%s AND question_id=%s AND student_id=%s", 
+                #     (textbook_id, chapter_id, section_id, block_id, activity_id, question_id, student_id)
+                # )
+                # score = cursor.fetchone()
 
                 if choice == '1':
+                    current_timestamp = datetime.now()
+                    if user_answer < 1 and user_answer > 4:
+                        print("Invalid choice.")
+                        continue
+                    elif int(user_answer) == int(correct_answer):
+                        print("Correct! You score increased by 3.")
+                        cursor.execute("UPDATE Score SET score = 3, timestamp = %s WHERE textbook_id=%s AND chapter_id=%s AND section_id=%s AND content_block_id=%s AND activity_id=%s AND question_id=%s", (current_timestamp, textbook_id, chapter_id, section_id, block_id, activity_id, question_id))
+                        conn.commit()
+                        # if score:
+                        #     score_id = score[0]
+                        #     cursor.execute("UPDATE Score SET score = 3, timestamp = %s WHERE score_id=%s", (current_timestamp, score_id))
+                        # else:
+                        #     cursor.execute(
+                        #         "INSERT INTO Score(student_id, course_id, ) score_id Score WHERE textbook_id=%s AND chapter_id=%s AND section_id=%s AND content_block_id=%s AND activity_id=%s AND question_id=%s AND student_id=%s", 
+                        #         (textbook_id, chapter_id, section_id, block_id, activity_id, question_id, student_id)
+                        #     )
+                        #     conn.commit()
+                    else:
+                        print("Incorrect answer. You lost 1 point. Here's the explanation...")
+                        explanation = explanations[correct_answer - 1]  # Fetch explanation for the wrong answer
+                        print(explanation)
+                        cursor.execute("UPDATE Score SET score = -1, timestamp = %s WHERE textbook_id=%s AND chapter_id=%s AND section_id=%s AND content_block_id=%s AND activity_id=%s AND question_id=%s", (current_timestamp, textbook_id, chapter_id, section_id, block_id, activity_id, question_id))
+                        conn.commit()
                     continue  # Go to the next block or finish
                 elif choice == '2':
                     print("Going back to the previous page...")
@@ -3514,6 +3557,7 @@ def view_block(chapter_id, section_id, student_id):
     finally:
         cursor.close()
         conn.close()
+        return student_landing_page(student_id)
 
 
 def view_participation_activity_point(student_id):
@@ -3522,13 +3566,13 @@ def view_participation_activity_point(student_id):
 
     try:
         # Retrieve the participation points for the student
-        cursor.execute("SELECT participation_points FROM Students WHERE student_id = %s", (student_id,))
+        cursor.execute("SELECT SUM(score) FROM Score WHERE student_id = %s", (student_id,))
         result = cursor.fetchone()
 
         if result:
             participation_points = result[0]
             print(f"\n===== Current Participation Points =====")
-            print(f"Your current participation activity points: {participation_points}")
+            print(f"Your current total participation activity points: {participation_points}")
         else:
             print("No participation points found for this student.")
 
