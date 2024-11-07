@@ -1,3 +1,4 @@
+USE proj1
 -- Automatically Hide All Sections When a Chapter is Hidden
 
 DELIMITER //
@@ -67,6 +68,74 @@ BEGIN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Error: content_block_id must be in the format block[0-9][1-9]';
     END IF;
+END //
+
+DELIMITER ;
+
+
+
+-- User Authentication
+
+DELIMITER //
+
+CREATE TRIGGER check_user_id_format
+BEFORE INSERT ON User
+FOR EACH ROW
+BEGIN
+    DECLARE expected_user_id VARCHAR(50);
+    DECLARE year_part CHAR(2);
+    DECLARE month_part CHAR(2);
+
+    -- Get the last 2 digits of the current year and the month in 2-digit format
+    SET year_part = RIGHT(YEAR(CURDATE()), 2);
+    SET month_part = LPAD(MONTH(CURDATE()), 2, '0');
+
+    -- Concatenate to form the expected user_id based on first_name, last_name, year, and month
+    SET expected_user_id = CONCAT(
+        LEFT(NEW.first_name, 2),
+        LEFT(NEW.last_name, 2),
+        year_part,
+        month_part
+    );
+
+    -- Check if the provided user_id matches the expected format
+    IF NEW.user_id != expected_user_id THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Error: user_id must follow the format: first 2 letters of first_name + last_name + last 2 digits of year + month';
+    END IF;
+END //
+
+DELIMITER ;
+
+
+-- Notification Trigger
+
+DELIMITER //
+
+CREATE TRIGGER score_update_notification
+AFTER INSERT ON Score
+FOR EACH ROW
+BEGIN
+    INSERT INTO Notification (message, user_id, status, timestamp)
+    VALUES (
+        CONCAT('Score has been updated with score_id ', NEW.score_id),
+        NEW.student_id,
+        'unread',
+        NOW()
+    );
+END //
+
+CREATE TRIGGER score_change_notification
+AFTER UPDATE ON Score
+FOR EACH ROW
+BEGIN
+    INSERT INTO Notification (message, user_id, status, timestamp)
+    VALUES (
+        CONCAT('Score has been updated with score_id ', NEW.score_id),
+        NEW.student_id,
+        'unread',
+        NOW()
+    );
 END //
 
 DELIMITER ;
