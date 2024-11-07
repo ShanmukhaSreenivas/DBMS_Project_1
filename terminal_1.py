@@ -3539,8 +3539,6 @@ def view_block(textbook_id, chapter_id, section_id, student_id):
                 
                 tmp = cursor.fetchall()
                 
-                print(correct_answer)
-                
                 print(f"Question: {question_text}")
                 
                 print("Options:")
@@ -3554,7 +3552,7 @@ def view_block(textbook_id, chapter_id, section_id, student_id):
                 choice = input("Choose an option (1-2): ")
                 
                 cursor.execute(
-                    "SELECT score_id Score WHERE textbook_id=%s AND chapter_id=%s AND section_id=%s AND content_block_id=%s AND activity_id=%s AND question_id=%s AND student_id=%s", 
+                    "SELECT score_id FROM Score WHERE textbook_id=%s AND chapter_id=%s AND section_id=%s AND content_block_id=%s AND activity_id=%s AND question_id=%s AND student_id=%s", 
                     (textbook_id, chapter_id, section_id, block_id, activity_id, question_id, student_id)
                 )
                 score = cursor.fetchone()
@@ -3567,16 +3565,23 @@ def view_block(textbook_id, chapter_id, section_id, student_id):
                         continue
                     elif int(user_answer) == int(correct_answer):
                         print("Correct! You score increased by 3.")
-                        cursor.execute(f"UPDATE Score SET score = 3, timestamp = '{current_timestamp}' WHERE textbook_id={textbook_id} AND chapter_id='{chapter_id}' AND section_id={section_id} AND content_block_id='{block_id}' AND activity_id='{activity_id}' AND question_id='{question_id}'")
+                        if score:
+                            # score_id = score[0]
+                            cursor.execute(f"UPDATE Score SET score = 3, timestamp = '{current_timestamp}' WHERE textbook_id={textbook_id} AND chapter_id='{chapter_id}' AND section_id={section_id} AND content_block_id='{block_id}' AND activity_id='{activity_id}' AND question_id='{question_id}'")
+                        else:
+                            course_id = input("Enter Course ID: ")
+                            cursor.execute(f"INSERT INTO Score(student_id, course_id, textbook_id, section_id, chapter_id, content_block_id, activity_id, question_id, score, feedback, timestamp) VALUES('{student_id}', '{course_id}', '{textbook_id}', '{section_id}', '{chapter_id}', '{block_id}', '{activity_id}', '{question_id}', 3, '', '{current_timestamp}')")
                         conn.commit()
                     else:
                         print("Incorrect answer. You lost 1 point. Here's the explanation...")
                         explanation = explanations[int(correct_answer) - 1]
                         print(explanation)
                         if score:
-                            score_id = score[0]
-                            print(score_id)
+                            # score_id = score[0]
                             cursor.execute(f"UPDATE Score SET score = -1, timestamp = '{current_timestamp}' WHERE textbook_id={textbook_id} AND chapter_id='{chapter_id}' AND section_id={section_id} AND content_block_id='{block_id}' AND activity_id='{activity_id}' AND question_id='{question_id}'")
+                        else:
+                            course_id = input("Enter Course ID: ")
+                            cursor.execute(f"INSERT INTO Score(student_id, course_id, textbook_id, section_id, chapter_id, content_block_id, activity_id, question_id, score, feedback, timestamp) VALUES('{student_id}', '{course_id}', '{textbook_id}', '{section_id}', '{chapter_id}', '{block_id}', '{activity_id}', '{question_id}', -1, '', '{current_timestamp}')")
                         conn.commit()
                     continue  # Go to the next block or finish
                 elif choice == '2':
