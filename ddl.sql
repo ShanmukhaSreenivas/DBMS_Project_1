@@ -140,15 +140,6 @@ CREATE TABLE Question(
     PRIMARY KEY (question_id, activity_id, section_id, content_block_id)
 );
 
--- Score Table
--- CREATE TABLE Score (
---     score INTEGER NOT NULL,
---     points INTEGER NOT NULL,
---     activity_id VARCHAR(20) NOT NULL REFERENCES Activity(activity_id) ON DELETE CASCADE,
---     student_id VARCHAR(50) NOT NULL REFERENCES Student(student_id) ON DELETE CASCADE,
---     timestamp TIMESTAMP NOT NULL,
---     PRIMARY KEY (activity_id, student_id)
--- );
 
 CREATE TABLE Score (
     score_id INT AUTO_INCREMENT PRIMARY KEY,

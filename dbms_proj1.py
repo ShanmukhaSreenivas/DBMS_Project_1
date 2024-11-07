@@ -13,39 +13,291 @@ def get_db_connection():
 
 def main_menu():
     while True:
-        print("\nMain Menu")
+        print("\nStart Menu:")
         print("1. Admin Login")
         print("2. Faculty Login")
         print("3. TA Login")
         print("4. Student Login")
-        print("5. Exit")
+        print("5. Run SQL Queries")
+        print("6. Exit")
 
-        choice = input("Select an option (1-5): ")
+        option = input("Select an option (1-5): ")
 
-        if choice == '1':
-            login('admin')
-        elif choice == '2':
-            login('faculty')
-        elif choice == '3':
-            login('ta')
-        elif choice == '4':
+        if option == '1':
+            user_login('admin')
+        elif option == '2':
+            user_login('faculty')
+        elif option == '3':
+            user_login('ta')
+        elif option == '4':
             student_login()
-        elif choice == '5':
+        elif option == '5':
+            run_queries()
+        elif option == '6':
             print("Exiting the application.")
-            break
+            exit()
         else:
-            print("Invalid choice. Please enter a number between 1 and 5.")
+            print("Invalid option. Please enter a number between 1 and 5.")
 
-
-def login(user_type):
+def run_queries():
     while True:
-        print(f"\n===== {user_type.capitalize()} Login =====")
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        print("\n\n\nQueries Menu")
+        print("1. Write a query that prints the number of sections of the first chapter of a textbook.")
+        print("2. Print the names of faculty and TAs of all courses. For each person print their role next to their names.")
+        print("3. For each active course, print the course id, faculty member and total number of students.")
+        print("4. Find the course which the largest waiting list, print the course id and the total number of people on the list")
+        print("5. Print the contents of Chapter 02 of textbook 101 in proper sequence.")
+        print("6. For Q2 of Activity0 in Sec02 of Chap01 in textbook 101, print the incorrect answers for that question and their corresponding explanations.")
+        print("7. Find any book that is in active status by one instructor but evaluation status by a different instructor.")
+        print("8. Go Back")
+        
+        option = input("Choose an option (1-8): ")
+        
+        
+        if option == '1':
+            query = """
+            SELECT COUNT(s.section_id) FROM section s
+            JOIN etextbook e ON e.textbook_id = s.textbook_id
+            JOIN chapter c ON c.chapter_id = s.chapter_id
+            AND c.textbook_id = s.textbook_id
+            WHERE
+            e.textbook_id = '101'-- 'Enter the Textbook ID here'
+            AND c.chapter_id = 'chap01'; 
+            """
+            print("Running the query with texbook_id = 101 and chapter_id = chap01\n")
+            
+            cursor.execute(query)
+            output = cursor.fetchall()[0][0]
+            
+            print(output)
+        
+        elif option == '2':
+            query = """
+            SELECT 
+            t.course_id AS 'Course',
+            CONCAT(u.first_name, " ", u.last_name) AS 'Name',
+            u.role as 'Role'
+            FROM user u
+            JOIN teachingassistant t
+            ON (t.faculty_id = u.user_id OR t.teaching_assistant_id = u.user_id)
+            WHERE t.course_id IS NOT NULL
+            ORDER BY t.course_id ASC, u.role ASC; 
+            """
+            print("Running the query\n")
+            
+            cursor.execute(query)
+            output = cursor.fetchall()
+            
+            for out in output:
+                print(out)
+            
+            
+        elif option == '3':
+            query = """
+            SELECT
+            c.course_id AS 'Course ID',
+            f.faculty_id AS 'Faculty Member',
+            CONCAT(u.first_name, " ", u.last_name) AS 'Faculty Member Name',
+            COUNT(s.student_id) 'Total Number of Students'
+            FROM course c
+            JOIN faculty f ON f.faculty_id = c.faculty_id
+            JOIN user u ON u.user_id = f.faculty_id
+            JOIN enrollment e ON e.course_id = c.course_id
+            JOIN student s ON s.student_id = e.student_id
+            WHERE
+            c.course_type = 'active'
+            AND e.status = 'approved'
+            GROUP BY c.course_id; 
+            """
+            print("Running the query\n")
+            
+            cursor.execute(query)
+            output = cursor.fetchall()
+            
+            for out in output:
+                print(out)
+                
+        elif option == '4':
+            query = """
+            SELECT course_id 'Course ID', wc 'Waitlist Count'
+            FROM (SELECT c1.course_id, COUNT(s1.student_id) AS 'wc'
+            FROM course c1
+            JOIN enrollment e1 ON e1.course_id = c1.course_id
+            JOIN student s1 ON s1.student_id = e1.student_id
+            WHERE e1.status = 'pending'
+            GROUP BY c1.course_id
+            ORDER BY COUNT(s1.student_id) DESC) wait_table
+            WHERE 1=1 LIMIT 1;
+            """
+            print("Running the query\n")
+            
+            cursor.execute(query)
+            output = cursor.fetchall()
+            
+            for out in output:
+                print(out)
+                
+        elif option == '5':
+            query = """
+            SELECT e.textbook_id AS 'Book ID',
+            e.title AS 'Book Title',
+            c.chapter_id AS 'Chapter ID',
+            c.title AS 'Chapter Title',
+            s.section_number AS 'Section Number',
+            s.title AS 'Title',
+            cb.content_block_id AS 'Content Block ID',
+            cb.block_type AS 'Block Type',
+            cb.content AS 'Block Content',
+            cb.hidden AS 'Is Content Block Hidden',
+            a.activity_id AS 'Activity ID',
+            a.hidden AS 'Is Activity Hidden',
+            q.question_id AS 'Question ID',
+            q.question_text AS 'Question Text',
+            q.option1 AS 'Option 1',
+            q.option2 AS 'Option 2',
+            q.option3 AS 'Option 3',
+            q.option4 AS 'Option 4',
+            q.explanation1 AS 'Explanation 1',
+            q.explanation2 AS 'Explanation 2',
+            q.explanation3 AS 'Explanation 3',
+            q.explanation4 AS 'Explanation 4',
+            q.correct_option AS 'Correct Option'
+
+            FROM 
+            etextbook e
+            JOIN chapter c
+            ON e.textbook_id = c.textbook_id
+            JOIN section s
+            ON s.chapter_id = c.chapter_id
+            AND s.textbook_id = c.textbook_id
+            LEFT JOIN contentblock cb
+            ON (cb.section_id = s.section_id)
+            LEFT JOIN activity a
+            ON (a.content_block_id = cb.content_block_id
+            AND a.section_id = s.section_id)
+            LEFT JOIN question q
+            ON (q.activity_id = a.activity_id
+            AND q.content_block_id = cb.content_block_id
+            AND q.section_id = s.section_id)
+
+            WHERE 1=1
+            AND c.chapter_id = 'chap02'
+            AND e.textbook_id = '101';
+            """
+            print("Running the query\n")
+            
+            cursor.execute(query)
+            output = cursor.fetchall()
+            
+            for out in output:
+                print(out)
+        elif option == '6':
+            query = """
+            SELECT 
+            s.textbook_id AS 'Textbook ID',
+            q.question_id AS 'Question ID',
+            q.question_text AS 'Question Text',
+            (CASE 
+            WHEN (q.correct_option = '2' OR q.correct_option = '3' OR q.correct_option = '4') 
+            THEN CONCAT("Option 1 : ", q.option1) 
+            ELSE CONCAT("Option 2 : ", q.option2) 
+            END) AS 'Incorrect Option 1',
+            (CASE 
+            WHEN (q.correct_option = '2' OR q.correct_option = '3' OR q.correct_option = '4') 
+            THEN CONCAT("Explanation 1 : ", q.explanation1) 
+            ELSE CONCAT("Explanation 2 : ", q.explanation2) 
+            END) AS 'Incorrect Explanation 1',
+            (CASE 
+            WHEN (q.correct_option = '1' OR q.correct_option = '2')
+            THEN CONCAT("Option 3 : ", q.option3)  
+            WHEN (q.correct_option = '3' OR q.correct_option = '4') 
+            THEN CONCAT("Option 2 : ", q.option2)  
+            END) AS 'Incorrect Option 2',
+            (CASE 
+            WHEN (q.correct_option = '1' OR q.correct_option = '2')
+            THEN CONCAT("Explanation 3 : ", q.explanation3)  
+            WHEN (q.correct_option = '3' OR q.correct_option = '4') 
+            THEN CONCAT("Explanation 2 : ", q.explanation2)  
+            END) AS 'Incorrect Explanation 2',
+            (CASE
+            WHEN (q.correct_option = '1' OR q.correct_option = '2' OR q.correct_option = '3')
+            THEN CONCAT("Option 4 : ", q.option4)
+            WHEN q.correct_option = '4'
+            THEN CONCAT("Option 3 : ", q.option3) 
+            END) AS 'Incorrect Option 3',
+            (CASE
+            WHEN (q.correct_option = '1' OR q.correct_option = '2' OR q.correct_option = '3')
+            THEN CONCAT("Explanation 4 : ", q.explanation4)
+            WHEN q.correct_option = '4'
+            THEN CONCAT("Explanation 3 : ", q.explanation3) 
+            END) AS 'Incorrect Option 3'
+
+            FROM question q 
+            JOIN Activity a
+            ON q.activity_id = a.activity_id 
+            AND q.section_id = a.section_id 
+            AND q.content_block_id = a.content_block_id
+            JOIN section s
+            ON s.section_id = a.section_id
+
+            WHERE 1=1
+            AND q.question_id = 'Q2' AND q.activity_id = 'ACT0';
+            """
+            print("Running the query\n")
+            
+            cursor.execute(query)
+            output = cursor.fetchall()
+            
+            for out in output:
+                print(out)
+        elif option == '7':
+            query = """
+            SELECT
+            DISTINCT
+            e.textbook_id AS 'Textbook ID',
+            e.title AS 'Textbook Title'
+            FROM etextbook e
+            WHERE 
+            e.textbook_id IN 
+            (SELECT e1.textbook_id
+            FROM etextbook e1
+            JOIN course c1
+            ON c1.textbook_id = e1.textbook_id
+            JOIN course c2
+            ON c2.textbook_id = e1.textbook_id
+            AND c1.course_type = 'active'
+            AND c2.course_type = 'evaluation');
+            """
+            print("Running the query\n")
+            
+            cursor.execute(query)
+            output = cursor.fetchall()
+            
+            for out in output:
+                print(out)
+        elif option == '8':
+            cursor.close()
+            conn.close()
+            return main_menu()
+        else:
+            print("Invalid option. Please enter 1 or 8.")
+            continue
+        
+        cursor.close()
+        conn.close()
+
+
+def user_login(user_type):
+    while True:
+        print(f"\nLogin Page for {user_type.capitalize()}")
         print("1. Sign-In")
         print("2. Go Back")
 
-        choice = input("Choose an option (1-2): ")
+        option = input("Choose an option (1-2): ")
 
-        if choice == '1':
+        if option == '1':
             user_id = input("Enter User ID: ")
             password = input("Enter Password: ")
 
@@ -69,22 +321,22 @@ def login(user_type):
                     student_home()
                 break
             else:
-                print("Login failed. Incorrect credentials.")
+                print("Invalid credentials. Login failed.")
 
             cursor.close()
             conn.close()
 
-        elif choice == '2':
-            print("Going back to the Main Menu...")
+        elif option == '2':
+            print("Redirecting to the Main Menu...")
             return main_menu()
 
         else:
-            print("Invalid choice. Please enter 1 or 2.")
+            print("Invalid option. Please enter 1 or 2.")
 
 
 def admin_home():
     while True:
-        print("\n===== Admin Landing Menu =====")
+        print("\nAdmin Landing Menu")
         print("1. Create a Faculty Account")
         print("2. Create E-textbook")
         print("3. Modify E-textbooks")
@@ -92,29 +344,29 @@ def admin_home():
         print("5. Create New Evaluation Course")
         print("6. Logout")
 
-        choice = input("Enter choice (1-6): ")
+        option = input("Enter choice (1-6): ")
 
-        if choice == '1':
+        if option == '1':
             create_faculty_account()
-        elif choice == '2':
+        elif option == '2':
             create_e_textbook()
-        elif choice == '3':
+        elif option == '3':
             modify_etextbook()
-        elif choice == '4':
+        elif option == '4':
             create_new_active_course()
-        elif choice == '5':
+        elif option == '5':
             create_new_eval_course()
-        elif choice == '6':
-            print("Logging out... Returning to the Home page.")
+        elif option == '6':
+            print("Logging out. Returning to the Home page.")
             main_menu()
             break
         else:
-            print("Invalid choice. Please enter a number between 1 and 6.")
+            print("Invalid option. Please enter a number between 1 and 6.")
 
 
 def create_faculty_account():
     while True:
-        print("\n===== Create a Faculty Account =====")
+        print("\nCreate a Faculty Account")
         first_name = input("Enter First Name: ")
         last_name = input("Enter Last Name: ")
         email = input("Enter Email: ")
@@ -179,13 +431,13 @@ def create_faculty_account():
 
 def create_e_textbook():
     while True:
-        print("\n===== Create E-textbook =====")
-        title = input("Enter the title of the new E-textbook: ")
-        textbook_id = input("Enter the unique E-textbook ID: ")
+        print("\nCreation of an E-textbook")
+        title = input("Enter a new textbook title: ")
+        textbook_id = input("Enter a new unique textbook ID: ")
 
-        print("\n1. Add New Chapter")
+        print("\n1. Add a new chapter to the textbook")
         print("2. Go Back")
-        choice = input("Enter choice (1-2): ")
+        choice = input("Enter a choice (1-2): ")
 
         if choice == '1':
             conn = get_db_connection()
@@ -199,7 +451,7 @@ def create_e_textbook():
 
                 if existing_textbook:
                     print(
-                        "A textbook with this ID already exists. Please try again with a different ID."
+                        "Entered textbook ID already exists. Please enter a new unique textbook ID."
                     )
                 else:
                     cursor.execute(
@@ -210,31 +462,31 @@ def create_e_textbook():
                         (textbook_id, title),
                     )
                     conn.commit()
-                    print("E-textbook created successfully!")
+                    print("An E-textbook was successfully added!")
                     add_new_chapter(textbook_id)
                     return
             except mysql.connector.Error as err:
-                print(f"An error occurred: {err}")
+                print(f"Failure. An error occurred: {err}")
             finally:
                 cursor.close()
                 conn.close()
 
         elif choice == '2':
-            print("Discarding input. Returning to Admin Landing Page...")
+            print("Discarding the entered input and going back to Admin Landing Page now")
             return
         else:
-            print("Invalid choice. Please select 1 or 2.")
+            print("Entered choice is Invalid. Please select 1 or 2.")
 
 
 def add_new_chapter(textbook_id):
     while True:
-        print(f"\n===== Add New Chapter to E-textbook (ID: {textbook_id}) =====")
-        chapter_id = input("Enter Unique Chapter ID: ")
-        chapter_title = input("Enter Chapter Title: ")
-        print("\n1. Add New Section")
+        print(f"\nAddition of a new Chapter for the textbook: {textbook_id}")
+        chapter_id = input("Enter a new Unique chapter ID: ")
+        chapter_title = input("Enter a new chapter Title: ")
+        print("\n1. Add a new Section")
         print("2. Go Back")
-        print("3. Landing Page")
-        choice = input("Enter choice (1-3): ")
+        print("3. Return to Landing Page")
+        choice = input("Enter a choice (1-3): ")
 
         if choice == '1':
             conn = get_db_connection()
@@ -249,35 +501,36 @@ def add_new_chapter(textbook_id):
                     (chapter_id, chapter_title, textbook_id),
                 )
                 conn.commit()
-                print("Chapter added successfully!")
+                
+                print("A new chapter had been added successfully to the textbook!")
                 return add_new_section(chapter_id, textbook_id)
             except mysql.connector.Error as err:
                 if "chapter_id must be in the format" in str(err):
                     print(f"Error: {err}")
                     print(
-                        "Please enter a valid chapter_id in the format 'chap[0-9][1-9]'."
+                        "Entered chapter ID is invalid. Please enter a valid chapter_id with the format 'chap[0-9][1-9]'."
                     )
                 else:
-                    print(f"An error occurred: {err}")
+                    print(f"Failure. An error occurred: {err}")
             finally:
                 cursor.close()
                 conn.close()
 
         elif choice == '2':
-            print("Discarding input. Returning to the previous page...")
+            print("Discarding the provided input. Returning to the previous page...")
             return create_e_textbook()
 
         elif choice == '3':
-            print("Discarding input. Returning to the Admin Landing Page...")
+            print("Discarding the previous input. Returning to the Admin Landing Page...")
             return admin_home()
 
         else:
-            print("Invalid choice. Please select 1, 2, or 3.")
+            print("Entered an Invalid choice. Please select (1 - 3).")
 
 
 def add_new_section(chapter_id, textbook_id):
     while True:
-        print(f"\n===== Add New Section to Chapter (ID: {chapter_id}) =====")
+        print(f"\nAdding a new Section to the chapter (ID: {chapter_id})")
 
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -290,23 +543,23 @@ def add_new_section(chapter_id, textbook_id):
 
         if not chapter:
             print(
-                f"Chapter with ID {chapter_id} does not exist. Please enter a valid Chapter ID."
+                f"A chapter with the chapter ID {chapter_id} doesn't exist. Please enter a valid Chapter ID."
             )
             cursor.close()
             conn.close()
             break
         else:
-            print(f"Chapter with ID {chapter_id} found.")
+            print(f"Chapter ID: {chapter_id} found.")
             cursor.close()
             conn.close()
 
-        section_number = input("Enter Section Number: ")
-        section_title = input("Enter Section Title: ")
+        section_number = input("Enter a new Section Number: ")
+        section_title = input("Enter a new Section Title: ")
 
-        print("\n1. Add New Content Block")
+        print("\n1. Add a new Content Block")
         print("2. Go Back")
-        print("3. Landing Page")
-        choice = input("Enter choice (1-3): ")
+        print("3. Return to Landing Page")
+        choice = input("Enter a choice (1-3): ")
 
         if choice == '1':
             conn = get_db_connection()
@@ -328,7 +581,7 @@ def add_new_section(chapter_id, textbook_id):
                 )
                 section_id = cursor.fetchone()[0]
 
-                print("Section added successfully!")
+                print("A new section has been added successfully!")
 
                 return add_new_content_block(section_id)
             except mysql.connector.Error as err:
@@ -344,20 +597,20 @@ def add_new_section(chapter_id, textbook_id):
                 conn.close()
 
         elif choice == '2':
-            print("Returning to the previous page...")
+            print("Going back to the previous page...")
             return add_new_chapter(textbook_id)
 
         elif choice == '3':
-            print("Returning to the Admin Landing Page...")
+            print("Going back to the Admin Landing Page...")
             return admin_home()
 
         else:
-            print("Invalid choice. Please select 1, 2, or 3.")
+            print("Entered an invalid choice. Please select (1-3)")
 
 
 def add_new_content_block(section_id):
     while True:
-        print(f"\n===== Add New Content Block for Section (ID: {section_id}) =====")
+        print(f"\nAddition of a new Content Block for Section (ID: {section_id})")
 
         content_block_id = input("Enter Unique Content Block ID:")
 
@@ -373,14 +626,14 @@ def add_new_content_block(section_id):
                 ),
             )
             conn.commit()
-            print(f"New Content Block created with ID {content_block_id}.")
-            print("\n1. Add Text")
-            print("2. Add Picture")
-            print("3. Add Activity")
+            print(f"A new Content Block created with Block ID {content_block_id}.")
+            print("\n1. Add some Text")
+            print("2. Add a Picture")
+            print("3. Add an Activity")
             print("4. Go Back")
-            print("5. Landing Page")
+            print("5. Return to Landing Page")
 
-            choice = input("Enter choice (1-5): ")
+            choice = input("Enter a choice (1-5): ")
             if choice == '1':
                 return add_text(content_block_id, section_id)
             elif choice == '2':
@@ -394,13 +647,13 @@ def add_new_content_block(section_id):
                 )
                 result = cursor.fetchone()
                 chapter_id, textbook_id = result
-                print("Discarding input. Returning to the previous page...")
+                print("Discarding entered input and going back to the previous page...")
                 return add_new_section(chapter_id, textbook_id)
             elif choice == '5':
-                print("Discarding input. Returning to the User Landing Page...")
+                print("Discarding entered input and going back to the User Landing Page...")
                 return admin_home()
             else:
-                print("Invalid choice. Please enter a number between 1 and 5.")
+                print("Invalid choice. Please enter a choice (1-5)")
         except mysql.connector.Error as err:
             if "content_block_id must be in the format" in str(err):
                 print(f"Error: {err}")
@@ -419,7 +672,7 @@ def add_new_content_block(section_id):
 
 def add_text(content_block_id, section_id):
     while True:
-        print(f"\n===== Add Text to Content Block (ID: {content_block_id}) =====")
+        print(f"\nAddition of Text to Content Block (ID: {content_block_id})")
         text_content = input("Enter text content: ")
 
         print("\n1. Add")
@@ -450,11 +703,11 @@ def add_text(content_block_id, section_id):
             return add_new_content_block(section_id)
 
         elif choice == '2':
-            print("Discarding input. Returning to the previous page...")
+            print("Discarding current input and going back to the previous page...")
             return add_new_content_block(section_id)
 
         elif choice == '3':
-            print("Discarding input. Returning to the User Landing Page...")
+            print("Discarding current input and going back to the User Landing Page...")
             return admin_home()
 
         else:
@@ -463,14 +716,14 @@ def add_text(content_block_id, section_id):
 
 def add_picture(content_block_id, section_id):
     while True:
-        print(f"\n===== Add Picture to Content Block (ID: {content_block_id}) =====")
+        print(f"\nAddition of a Picture to Content Block (ID: {content_block_id})")
         picture_url = input("Enter picture URL: ")
 
         print("\n1. Add")
         print("2. Go Back")
-        print("3. Landing Page")
+        print("3. Return to the Landing Page")
 
-        choice = input("Enter choice (1-3): ")
+        choice = input("Enter a choice (1-3): ")
 
         if choice == '1':
             conn = get_db_connection()
@@ -483,7 +736,7 @@ def add_picture(content_block_id, section_id):
                 )
                 conn.commit()
                 print(
-                    f"Picture URL added to Content Block {content_block_id} successfully!"
+                    f"A picture URL has been added to Content Block {content_block_id} successfully!"
                 )
             except mysql.connector.Error as err:
                 print(f"An error occurred: {err}")
@@ -494,21 +747,21 @@ def add_picture(content_block_id, section_id):
             return add_new_content_block(section_id)
 
         elif choice == '2':
-            print("Discarding input. Returning to the previous page...")
+            print("Discarding entered input and returning to the previous page")
             return add_new_content_block(section_id)
 
         elif choice == '3':
-            print("Discarding input. Returning to the User Landing Page...")
+            print("Discarding entered input and Returning to the User Landing Page")
             return admin_home()
 
         else:
-            print("Invalid choice. Please select 1, 2, or 3.")
+            print("Entered an Invalid choice. Please select (1-3).")
 
 
 def add_activity(content_block_id, section_id):
     while True:
-        print(f"\n===== Add Activity to Content Block (ID: {content_block_id}) =====")
-        activity_id = input("Enter Unique Activity ID: ")
+        print(f"\nAddition of an activity to Content Block (ID: {content_block_id})")
+        activity_id = input("Enter a new Unique Activity ID: ")
 
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -527,61 +780,61 @@ def add_activity(content_block_id, section_id):
             )
             conn.commit()
             print(
-                f"Activity with ID {activity_id} added successfully to Content Block {content_block_id}."
+                f"Activity with an ID {activity_id} added successfully to Content Block {content_block_id}."
             )
         except mysql.connector.Error as err:
-            print(f"An error occurred: {err}")
+            print(f"Failure. An error occurred: {err}")
         finally:
             cursor.close()
             conn.close()
 
-        print("\n1. Add Question")
+        print("\n1. Add a new Question")
         print("2. Go Back")
-        print("3. Landing Page")
+        print("3. Return to Landing Page")
 
-        choice = input("Enter choice (1-3): ")
+        choice = input("Enter a choice (1-3): ")
 
         if choice == '1':
             add_question(activity_id, content_block_id, section_id)
             return
 
         elif choice == '2':
-            print("Discarding input. Returning to the previous page...")
+            print("Discarding current input and going back to the previous page...")
             return add_new_content_block(section_id)
 
         elif choice == '3':
-            print("Discarding input. Returning to the User Landing Page...")
+            print("Discarding current input and going back to the User Landing Page...")
             return admin_home()
 
         else:
-            print("Invalid choice. Please select 1, 2, or 3.")
+            print("Entered an Invalid choice. Please select (1-3).")
 
 
 def add_question(activity_id, content_block_id, section_id):
     while True:
-        print("\n===== Add Question =====")
+        print("\nAddition of a new Question")
 
-        question_id = input("Enter Question ID: ")
-        question_text = input("Enter Question Text: ")
+        question_id = input("Enter a new Question ID: ")
+        question_text = input("Enter new Question Text: ")
 
-        option1_text = input("Enter Option 1 Text: ")
-        option1_explanation = input("Enter Option 1 Explanation: ")
+        option1_text = input("Enter the Option 1 Text: ")
+        option1_explanation = input("Enter the Option 1 Explanation: ")
 
-        option2_text = input("Enter Option 2 Text: ")
-        option2_explanation = input("Enter Option 2 Explanation: ")
+        option2_text = input("Enter the Option 2 Text: ")
+        option2_explanation = input("Enter the Option 2 Explanation: ")
 
-        option3_text = input("Enter Option 3 Text: ")
-        option3_explanation = input("Enter Option 3 Explanation: ")
+        option3_text = input("Enter the Option 3 Text: ")
+        option3_explanation = input("Enter the Option 3 Explanation: ")
 
-        option4_text = input("Enter Option 4 Text: ")
-        option4_explanation = input("Enter Option 4 Explanation: ")
+        option4_text = input("Enter the Option 4 Text: ")
+        option4_explanation = input("Enter the Option 4 Explanation: ")
 
-        correct_option = input("Enter Correct Option (1-4): ")
+        correct_option = input("Enter the correct answer, ranging from (1-4): ")
 
         print("\n1. Save")
         print("2. Cancel")
-        print("3. Landing Page")
-        choice = input("Enter choice (1-3): ")
+        print("3. Return to Landing Page")
+        choice = input("Enter a choice (1-3): ")
 
         if choice == '1':
             conn = get_db_connection()
@@ -611,50 +864,50 @@ def add_question(activity_id, content_block_id, section_id):
                     ),
                 )
                 conn.commit()
-                print("Question and options added successfully!")
+                print("Entered Question and options were added successfully!")
             except mysql.connector.Error as err:
-                print(f"An error occurred: {err}")
+                print(f"Failure. An error occurred: {err}")
             finally:
                 cursor.close()
                 conn.close()
             return add_activity(content_block_id, section_id)
 
         elif choice == '2':
-            print("Discarding input. Returning to Add Activity page...")
+            print("Discarding current input and returning to Add Activity page...")
             return add_activity(content_block_id, section_id)
 
         elif choice == '3':
-            print("Discarding input. Returning to Admin Landing Page...")
+            print("Discarding current input and Returning to Admin Landing Page...")
             return
 
         else:
-            print("Invalid choice. Please select 1, 2, or 3.")
+            print("Entered an Invalid choice. Please select (1-3)).")
 
 
 def add_question_faculty(activity_id, content_block_id, section_id, faculty_id):
     while True:
-        print("\n===== Add Question =====")
+        print("\nAddition of a Question for faculty")
 
-        question_id = input("Enter Question ID: ")
-        question_text = input("Enter Question Text: ")
+        question_id = input("Enter a new Question ID: ")
+        question_text = input("Enter new Question Text: ")
 
-        option1_text = input("Enter Option 1 Text: ")
-        option1_explanation = input("Enter Option 1 Explanation: ")
+        option1_text = input("Enter the Option 1 Text: ")
+        option1_explanation = input("Enter the Option 1 Explanation: ")
 
-        option2_text = input("Enter Option 2 Text: ")
-        option2_explanation = input("Enter Option 2 Explanation: ")
+        option2_text = input("Enter the Option 2 Text: ")
+        option2_explanation = input("Enter the Option 2 Explanation: ")
 
-        option3_text = input("Enter Option 3 Text: ")
-        option3_explanation = input("Enter Option 3 Explanation: ")
+        option3_text = input("Enter the Option 3 Text: ")
+        option3_explanation = input("Enter the Option 3 Explanation: ")
 
-        option4_text = input("Enter Option 4 Text: ")
-        option4_explanation = input("Enter Option 4 Explanation: ")
+        option4_text = input("Enter the Option 4 Text: ")
+        option4_explanation = input("Enter the Option 4 Explanation: ")
 
-        correct_option = input("Enter Correct Option (1-4): ")
+        correct_option = input("Enter the correct answer option (1-4): ")
 
         print("\n1. Save")
         print("2. Cancel")
-        choice = input("Enter choice (1-2): ")
+        choice = input("Enter a choice (1-2): ")
 
         if choice == '1':
             conn = get_db_connection()
@@ -684,25 +937,25 @@ def add_question_faculty(activity_id, content_block_id, section_id, faculty_id):
                     ),
                 )
                 conn.commit()
-                print("Question and options added successfully!")
+                print("Question and options were added successfully!")
             except mysql.connector.Error as err:
-                print(f"An error occurred: {err}")
+                print(f"Failure. An error occurred: {err}")
             finally:
                 cursor.close()
                 conn.close()
             return add_activity_faculty(content_block_id, section_id, faculty_id)
 
         elif choice == '2':
-            print("Discarding input. Returning to Add Activity page...")
+            print("Discarding the entered input and returning to the Addition Activity page...")
             return add_activity_faculty(content_block_id, section_id, faculty_id)
         else:
-            print("Invalid choice. Please select 1 or 2.")
+            print("Entered an Invalid choice. Please select (1-2).")
 
 
 def modify_etextbook():
     while True:
-        print("\n===== Modify E-textbook =====")
-        textbook_id = input("Enter Unique E-textbook ID: ")
+        print("\nModification of an E-textbook")
+        textbook_id = input("Enter a Unique E-textbook ID: ")
 
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -712,20 +965,20 @@ def modify_etextbook():
 
         if not textbook:
             print(
-                f"Textbook with ID {textbook_id} does not exist. Please enter a valid ID."
+                f"Textbook with the ID {textbook_id} is non-existent in the db. Please enter a valid ID."
             )
             cursor.close()
             conn.close()
             continue
         else:
-            print(f"Textbook with ID {textbook_id} found.")
+            print(f"Textbook with Textbook ID {textbook_id} was found")
             cursor.close()
             conn.close()
 
         print("\n1. Add New Chapter")
         print("2. Modify Chapter")
         print("3. Go Back")
-        print("4. Landing Page")
+        print("4. Return to the Landing Page")
         choice = input("Enter choice (1-4): ")
 
         if choice == '1':
@@ -737,21 +990,21 @@ def modify_etextbook():
             return modify_etextbook()
 
         elif choice == '3':
-            print("Returning to the previous page...")
+            print("Going back to the previous page")
             return
 
         elif choice == '4':
-            print("Returning to the Admin Landing Page...")
+            print("Going back to the Admin Landing Page")
             return
 
         else:
-            print("Invalid choice. Please select 1, 2, 3, or 4.")
+            print("Entered an Invalid choice. Please select (1-4)")
 
 
 def modify_chapter(textbook_id):
     while True:
-        print(f"\n===== Modify Chapter for Textbook (ID: {textbook_id}) =====")
-        chapter_id = input("Enter Unique Chapter ID: ")
+        print(f"\nModification of a Chapter for Textbook ID: {textbook_id}")
+        chapter_id = input("Enter an existing Unique Chapter ID: ")
 
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -764,7 +1017,7 @@ def modify_chapter(textbook_id):
 
         if not chapter:
             print(
-                f"Chapter with ID {chapter_id} does not exist for Textbook ID {textbook_id}. Please enter a valid Chapter ID."
+                f"Chapter with ID {chapter_id} does not exist for the Textbook ID {textbook_id}. Please enter a valid Chapter ID."
             )
             cursor.close()
             conn.close()
@@ -777,8 +1030,8 @@ def modify_chapter(textbook_id):
         print("\n1. Add New Section")
         print("2. Modify Section")
         print("3. Go Back")
-        print("4. Landing Page")
-        choice = input("Enter choice (1-4): ")
+        print("4. Return to the Landing Page")
+        choice = input("Enter a choice (1-4): ")
 
         if choice == '1':
             add_new_section(chapter_id, textbook_id)
@@ -789,22 +1042,22 @@ def modify_chapter(textbook_id):
             return modify_chapter(textbook_id)
 
         elif choice == '3':
-            print("Returning to the previous page...")
+            print("Going back to the previous page")
             return
 
         elif choice == '4':
-            print("Returning to the Admin Landing Page...")
+            print("Going back to the Admin Landing Page...")
             return
 
         else:
-            print("Invalid choice. Please select 1, 2, 3, or 4.")
+            print("Entered an Invalid choice. Please select (1-4).")
 
 
 def modify_section(chapter_id, textbook_id):
     while True:
-        print("\n===== Modify Section =====")
+        print("\nModification of a Section")
 
-        section_num = input("Enter Section Number: ")
+        section_num = input("Enter an existing Section Number: ")
 
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -823,7 +1076,7 @@ def modify_section(chapter_id, textbook_id):
 
             if not section_id:
                 print(
-                    "Section not found for the given E-textbook ID, Chapter ID, and Section number. Please try again."
+                    "Section was not found for the given E-textbook ID, Chapter ID, and Section number. Please try again."
                 )
                 continue
             else:
@@ -832,7 +1085,7 @@ def modify_section(chapter_id, textbook_id):
                 print("\n1. Add New Content Block")
                 print("2. Modify Content Block")
                 print("3. Go Back")
-                print("4. Landing Page")
+                print("4. Return to Landing Page")
 
                 choice = input("Enter choice (1-4): ")
 
@@ -845,11 +1098,11 @@ def modify_section(chapter_id, textbook_id):
                     return modify_section(chapter_id, textbook_id)
 
                 elif choice == '3':
-                    print("Returning to the previous page...")
+                    print("Going back to the previous page")
                     return
 
                 elif choice == '4':
-                    print("Returning to the Admin Landing Page...")
+                    print("Going back to the Admin Landing Page")
                     return
 
                 else:
@@ -863,7 +1116,7 @@ def modify_section(chapter_id, textbook_id):
 
 def modify_content_block(section_id):
     while True:
-        print("\n===== Modify Content Block =====")
+        print("\n Modify Content Block ")
         content_block_id = input("Enter Content Block ID: ")
 
         conn = get_db_connection()
@@ -886,9 +1139,9 @@ def modify_content_block(section_id):
                 print("2. Add Picture")
                 print("3. Add New Activity")
                 print("4. Go Back")
-                print("5. Landing Page")
+                print("5. Return to Landing Page")
 
-                choice = input("Enter choice (1-5): ")
+                choice = input("Enter a choice (1-5): ")
 
                 if choice == '1':
                     add_text(content_block_id, section_id)
@@ -903,17 +1156,17 @@ def modify_content_block(section_id):
                     return modify_content_block(section_id)
 
                 elif choice == '4':
-                    print("Returning to the previous page...")
+                    print("Returning to the previous page")
                     return
 
                 elif choice == '5':
-                    print("Returning to the Admin Landing Page...")
+                    print("Returning to the Admin Landing Page")
                     return
 
                 else:
-                    print("Invalid choice. Please select a number between 1 and 5.")
+                    print("Entered an Invalid choice. Please select a number between (1-5).")
         except mysql.connector.Error as err:
-            print(f"An error occurred: {err}")
+            print(f"Failure. An error occurred: {err}")
         finally:
             cursor.close()
             conn.close()
@@ -921,19 +1174,19 @@ def modify_content_block(section_id):
 
 def create_new_active_course():
     while True:
-        print("\n===== Create New Active Course =====")
-        course_id = input("Enter Unique Course ID: ")
-        course_title = input("Enter Course Name: ")
-        textbook_id = input("Enter Unique ID of the E-textbook: ")
-        faculty_id = input("Enter Faculty Member ID: ")
-        start_date = input("Enter Course Start Date (YYYY-MM-DD): ")
-        end_date = input("Enter Course End Date (YYYY-MM-DD): ")
-        course_token = input("Enter Unique Token: ")
-        capacity = input("Enter Course Capacity: ")
+        print("\nCreation of a Active Course")
+        course_id = input("Enter a Unique Course ID: ")
+        course_title = input("Enter a Course Name: ")
+        textbook_id = input("Enter a Unique ID of the E-textbook: ")
+        faculty_id = input("Enter a Faculty Member ID: ")
+        start_date = input("Enter a Course Start Date (YYYY-MM-DD): ")
+        end_date = input("Enter a Course End Date (YYYY-MM-DD): ")
+        course_token = input("Enter a Unique Token: ")
+        capacity = input("Enter a Course Capacity: ")
 
         print("\n1. Save")
         print("2. Cancel")
-        print("3. Landing Page")
+        print("3. Return to Landing Page")
 
         choice = input("Enter choice (1-3): ")
 
@@ -1013,32 +1266,37 @@ def create_new_active_course():
             return
 
         elif choice == '2':
-            print("Cancelling input and returning to the Admin Landing Page...")
+            print("Discarding current input and returning to the Admin Landing Page")
             return
 
         elif choice == '3':
-            print("Returning to the Admin Landing Page...")
+            print("Going back to the Admin Landing Page...")
             return
 
         else:
-            print("Invalid choice. Please select 1, 2, or 3.")
+            print("Entered an Invalid choice. Please select (1-3).")
 
 
 def create_new_eval_course():
     while True:
-        print("\n===== Create New Evaluation Course =====")
-        course_id = input("Enter Unique Course ID: ")
-        course_title = input("Enter Course Name: ")
-        textbook_id = input("Enter Unique ID of the E-textbook: ")
-        faculty_id = input("Enter Faculty Member ID: ")
-        start_date = input("Enter Course Start Date (YYYY-MM-DD): ")
-        end_date = input("Enter Course End Date (YYYY-MM-DD): ")
-        token = input("Enter Unique Token: ")
-        capacity = input("Enter Course Capacity: ")
+        print("\nCreate New Evaluation Course")
+        course_id = input("Enter a Unique Course ID: ")
+        course_title = input("Enter a Course Name: ")  
+        
+        
+        
+        textbook_id = input("Enter a Unique ID of the E-textbook: ")
+        faculty_id = input("Enter a Faculty Member ID: ")
+        start_date = input("Enter a Course Start Date (YYYY-MM-DD): ")
+        
+        
+        end_date = input("Enter a Course End Date (YYYY-MM-DD): ")
+        token = input("Enter a Unique Token: ")
+        capacity = input("Enter a Course Capacity: ")
 
         print("\n1. Save")
         print("2. Cancel")
-        print("3. Landing Page")
+        print("3. Return to the Landing Page")
         choice = input("Enter choice (1-3): ")
 
         if choice == '1':
@@ -1110,20 +1368,20 @@ def create_new_eval_course():
             return
 
         elif choice == '2':
-            print("Cancelling input and returning to the Admin Landing Page...")
+            print("Discarding entered input and returning to the Admin Landing Page")
             return
 
         elif choice == '3':
-            print("Returning to the Admin Landing Page...")
+            print("Going back to the Admin Landing Page")
             return
 
         else:
-            print("Invalid choice. Please select 1, 2, or 3.")
+            print("Entered an Invalid choice. Please select (1-3).")
 
 
 def faculty_login():
     while True:
-        print("\n===== Faculty Login =====")
+        print("\nFaculty Login")
         print("1. Sign-In")
         print("2. Go Back")
 
@@ -1131,8 +1389,8 @@ def faculty_login():
 
         if choice == '1':
 
-            user_id = input("Enter User ID: ")
-            password = input("Enter Password: ")
+            user_id = input("Enter your User ID: ")
+            password = input("Enter your Password: ")
 
             conn = get_db_connection()
             cursor = conn.cursor()
@@ -1145,17 +1403,21 @@ def faculty_login():
                 user = cursor.fetchone()
 
                 if user:
-                    print("Login successful. Welcome Faculty!")
+                    print("Login was successful. Welcome Faculty!")
                     faculty_landing(user_id)
                     break
                 else:
-                    print("Login Incorrect. Please try again.")
+                    print("Login was Incorrect. Please try again.")
 
             except mysql.connector.Error as err:
-                print(f"An error occurred: {err}")
+                print(f"Failure.An error occurred: {err}")
             finally:
                 cursor.close()
                 conn.close()
+
+
+
+
 
         elif choice == '2':
 
@@ -1164,13 +1426,13 @@ def faculty_login():
             break
 
         else:
-            print("Invalid choice. Please enter 1 or 2.")
+            print("Entered an Invalid choice. Please enter (1-2).")
 
 
 def faculty_landing(faculty_id):
     while True:
         print("Faculty Home: Welcome!")
-        print("\n===== Faculty Landing Menu =====")
+        print("\nFaculty Landing Menu")
         print("1. Go to Active Course")
         print("2. Go to Evaluation Course")
         print("3. View Courses")
@@ -1188,16 +1450,16 @@ def faculty_landing(faculty_id):
         elif choice == '4':
             change_password(faculty_id)
         elif choice == '5':
-            print("Logging out... Returning to the Home page.")
+            print("Logging out and going back to the Home page.")
             main_menu()
             break
         else:
-            print("Invalid choice. Please enter a number between 1 and 5.")
+            print("Entered an Invalid choice. Please enter a choice between (1-5).")
 
 
 def go_to_active_course(faculty_id):
     while True:
-        course_id = input("Enter the Active Course ID: ")
+        course_id = input("Enter a Active Course ID: ")
 
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -1211,7 +1473,7 @@ def go_to_active_course(faculty_id):
         active_course = cursor.fetchone()
 
         if not active_course:
-            print("Invalid Course ID. Please try again.")
+            print("Entered an Invalid Course ID. Please try again.")
             cursor.close()
             conn.close()
             continue
@@ -1221,7 +1483,7 @@ def go_to_active_course(faculty_id):
             )
             textbook_id = cursor.fetchone()[0]
 
-            print(f"\n===== Active Course Menu (Course ID: {course_id}) =====")
+            print(f"\nActive Course Functions for the Course ID: {course_id}")
             print("1. View Worklist")
             print("2. Approve Enrollment")
             print("3. View Students")
@@ -1230,7 +1492,7 @@ def go_to_active_course(faculty_id):
             print("6. Add TA")
             print("7. Go Back")
 
-            choice = input("Enter choice (1-7): ")
+            choice = input("Enter a choice (1-7): ")
 
             if choice == '1':
                 view_worklist(faculty_id)
@@ -1245,11 +1507,11 @@ def go_to_active_course(faculty_id):
             elif choice == '6':
                 add_ta(faculty_id)
             elif choice == '7':
-                print("Returning to Faculty Landing Page...")
+                print("Going back to Faculty Landing Page")
                 faculty_landing(faculty_id)
                 break
             else:
-                print("Invalid choice. Please enter a number between 1 and 7.")
+                print("Entered an Invalid choice. Please enter a choice (1-7).")
 
         cursor.close()
         conn.close()
@@ -1258,7 +1520,7 @@ def go_to_active_course(faculty_id):
 def view_worklist(faculty_id):
     while True:
         try:
-            print("\n===== View Worklist =====")
+            print("\nView Worklist Functionality")
 
             conn = get_db_connection()
             cursor = conn.cursor()
@@ -1277,28 +1539,28 @@ def view_worklist(faculty_id):
             worklist = cursor.fetchall()
 
             if worklist:
-                print("\n===== Students in Waiting List =====")
+                print("\nCurrent Students in Waiting List")
                 for student in worklist:
                     print(
                         f"Student ID: {student[0]}, Name: {student[1]} {student[2]}, Course: {student[3]}"
                     )
             else:
-                print("No students are currently in the waiting list.")
+                print("The waitlist is currently empty")
 
             print("\n1. Go back")
-            choice = input("Enter choice: ")
+            choice = input("Enter a choice (1 to Go Back): ")
 
             if choice == '1':
-                print("Returning to the Faculty: Active Course page...")
+                print("Going back to the Faculty: Active Course page")
                 go_to_active_course(faculty_id)
                 break
             else:
-                print("Invalid choice. Please select 1.")
+                print("Entered an Invalid choice. Please select 1 to Go Back.")
         except Exception as msg:
-            print(f"An error occurred: {msg}")
+            print(f"Failure. An error occurred: {msg}")
             return faculty_landing(faculty_id)
         except mysql.connector.Error as err:
-            print(f"An error occurred: {err}")
+            print(f"Failure. An error occurred: {err}")
             return faculty_landing(faculty_id)
         finally:
             cursor.close()
@@ -1307,7 +1569,7 @@ def view_worklist(faculty_id):
 
 def approve_enrollment(faculty_id):
     while True:
-        print("\n===== Approve Enrollment =====")
+        print("\nApprove Student Enrollment")
 
         student_id = input("Enter the Student ID: ")
 
@@ -1333,7 +1595,7 @@ def approve_enrollment(faculty_id):
                 f"Student ID {student_id} is waiting for approval in the course: {course_name}"
             )
 
-            print("\n1. Save (Approve Enrollment)")
+            print("\n1. Save (to Approve Student Enrollment)")
             print("2. Cancel")
 
             choice = input("Enter choice (1-2): ")
@@ -1354,19 +1616,19 @@ def approve_enrollment(faculty_id):
                         f"Enrollment for Student ID {student_id} in course {course_name} has been approved."
                     )
                 except mysql.connector.Error as err:
-                    print(f"An error occurred: {err}")
+                    print(f"Failure. An error occurred: {err}")
                 finally:
                     cursor.close()
                     conn.close()
                 return
 
             elif choice == '2':
-                print("Cancelling enrollment approval. Returning to the previous page.")
+                print("Discarding enrollment approval input. Going back to the previous page.")
                 cursor.close()
                 conn.close()
                 return
             else:
-                print("Invalid choice. Please select 1 or 2.")
+                print("Entered an Invalid choice. Please select (1-2).")
         else:
             print(
                 f"No pending enrollment found for Student ID {student_id}. Please try again."
@@ -1377,7 +1639,7 @@ def approve_enrollment(faculty_id):
 
 def view_students(faculty_id):
     while True:
-        print("\n===== View Students =====")
+        print("\nView Students")
 
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -1393,7 +1655,7 @@ def view_students(faculty_id):
         courses = cursor.fetchall()
 
         if courses:
-            print("\nCourses supervised by you:")
+            print("\nCourses that are supervised by you:")
             for idx, course in enumerate(courses, 1):
                 print(f"{idx}. {course[1]} (ID: {course[0]})")
 
@@ -1417,7 +1679,7 @@ def view_students(faculty_id):
                 students = cursor.fetchall()
 
                 if students:
-                    print(f"\nStudents enrolled:")
+                    print(f"\nStudents  currently enrolled:")
                     for student in students:
                         print(
                             f"Course ID: {student[3]}, ID: {student[0]}, Name: {student[1]} {student[2]}"
@@ -1426,22 +1688,22 @@ def view_students(faculty_id):
                     print(f"\nNo students found for the course")
 
             except ValueError:
-                print("Invalid input. Please enter a number.")
+                print("Entered an Invalid input. Please enter a number.")
 
         else:
-            print("You are not supervising any courses.")
+            print("No courses are supervised by you")
 
         cursor.close()
         conn.close()
 
         print("\n1. Go Back")
-        choice = input("Enter choice (1): ")
+        choice = input("Enter choice (1 to Go Back): ")
 
         if choice == '1':
             print("Going back to the previous page.")
             break
         else:
-            print("Invalid choice. Please enter 1.")
+            print("Invalid choice. Please enter 1 to go back.")
 
 
 from datetime import datetime
@@ -1449,11 +1711,11 @@ from datetime import datetime
 
 def add_ta(faculty_id):
     while True:
-        print("\n===== Add Teaching Assistant (TA) =====")
+        print("\nAddition of a Teaching Assistant (TA)")
 
-        first_name = input("Enter TA's First Name: ")
-        last_name = input("Enter TA's Last Name: ")
-        email = input("Enter TA's Email: ")
+        first_name = input("Enter the TA's First Name: ")
+        last_name = input("Enter the TA's Last Name: ")
+        email = input("Enter the TA's Email: ")
         default_password = input("Enter a Default Password: ")
 
         user_id_prefix = first_name[:2].upper() + last_name[:2].upper()
@@ -1465,7 +1727,7 @@ def add_ta(faculty_id):
         print("\n1. Save")
         print("2. Cancel")
 
-        choice = input("Enter choice (1-2): ")
+        choice = input("Enter a choice (1-2): ")
 
         if choice == '1':
 
@@ -1479,7 +1741,7 @@ def add_ta(faculty_id):
 
                 if existing_user:
                     print(
-                        "A user with this email already exists. Please try again with a different email."
+                        "User email already exists in the system. Please try again with a different email."
                     )
                 else:
 
@@ -1491,7 +1753,7 @@ def add_ta(faculty_id):
                         (user_id, first_name, last_name, email, default_password),
                     )
                     conn.commit()
-                    print("Teaching Assistant added successfully!")
+                    print("Teaching Assistant was added successfully!")
 
             except mysql.connector.Error as err:
                 print(f"An error occurred: {err}")
@@ -1508,14 +1770,14 @@ def add_ta(faculty_id):
             return
 
         else:
-            print("Invalid choice. Please select 1 or 2.")
+            print("Entered an Invalid choice. Please select (1-2).")
 
 
 def add_new_chapter_faculty(textbook_id, faculty_id):
     while True:
-        print("\n===== Add New Chapter =====")
+        print("\nAdd New Chapter")
 
-        chapter_id = input("Enter Unique Chapter ID: ")
+        chapter_id = input("Enter a Unique Chapter ID: ")
         chapter_title = input("Enter Chapter Title: ")
         print("\n1. Add New Section")
         print("2. Go Back")
@@ -1536,7 +1798,7 @@ def add_new_chapter_faculty(textbook_id, faculty_id):
 
                 if existing_chapter:
                     print(
-                        "A chapter with this ID already exists. Please try again with a different ID."
+                        "Use a different CHapter ID as one already exists with this ID."
                     )
                     return add_new_chapter_faculty(textbook_id)
                 else:
@@ -1559,7 +1821,7 @@ def add_new_chapter_faculty(textbook_id, faculty_id):
                         "Please enter a valid chapter_id in the format 'chap[0-9][1-9]'."
                     )
                 else:
-                    print(f"An error occurred: {err}")
+                    print(f"Failure. An error occurred: {err}")
 
             finally:
                 cursor.close()
@@ -1573,12 +1835,12 @@ def add_new_chapter_faculty(textbook_id, faculty_id):
             return faculty_landing(faculty_id)
 
         else:
-            print("Invalid choice. Please select 1 or 2.")
+            print("Invalid choice. Please select (1-2).")
 
 
 def modify_chapter_faculty(textbook_id, faculty_id):
     while True:
-        print("\n===== Modify Chapter =====")
+        print("\nModification of Chapter")
 
         chapter_id = input("Enter Unique Chapter ID: ")
 
@@ -1614,10 +1876,10 @@ def modify_chapter_faculty(textbook_id, faculty_id):
         elif choice == '4':
             modify_section_faculty(chapter_id, textbook_id, faculty_id)
         elif choice == '5':
-            print("Going back to the previous page...")
+            print("Going back to the previous page")
             break
         else:
-            print("Invalid choice. Please select a number between 1 and 5.")
+            print("Entered an Invalid choice. Please select a number between (1-5).")
 
         cursor.close()
         conn.close()
@@ -1625,7 +1887,7 @@ def modify_chapter_faculty(textbook_id, faculty_id):
 
 def hide_chapter(chapter_id, textbook_id):
     while True:
-        print("\n===== Hide Chapter =====")
+        print("\nHide Chapter")
         print("1. Save")
         print("2. Cancel")
 
@@ -1654,7 +1916,7 @@ def hide_chapter(chapter_id, textbook_id):
 
 def delete_chapter(chapter_id, textbook_id):
     while True:
-        print("\n===== Delete Chapter =====")
+        print("\nDelete Chapter")
         print("1. Save")
         print("2. Cancel")
 
@@ -1683,7 +1945,7 @@ def delete_chapter(chapter_id, textbook_id):
 
 def add_new_section_faculty(chapter_id, textbook_id, faculty_id):
     while True:
-        print("\n===== Add New Section =====")
+        print("\nAdd New Section")
         section_number = input("Enter Section Number: ")
         section_title = input("Enter Section Title: ")
 
@@ -1750,7 +2012,7 @@ def add_new_section_faculty(chapter_id, textbook_id, faculty_id):
 
 def modify_section_faculty(chapter_id, textbook_id, faculty_id):
     while True:
-        print("\n===== Modify Section =====")
+        print("\nModify Section")
         section_number = input("Enter Section Number: ")
 
         conn = get_db_connection()
@@ -1803,7 +2065,7 @@ def modify_section_faculty(chapter_id, textbook_id, faculty_id):
 
 def hide_section(section_id):
     while True:
-        print("\n===== Hide Section =====")
+        print("\nHide Section")
         print("1. Save")
         print("2. Cancel")
 
@@ -1832,7 +2094,7 @@ def hide_section(section_id):
 
 def delete_section(section_id):
     while True:
-        print("\n===== Delete Section =====")
+        print("\nDelete Section")
         print("1. Save")
         print("2. Cancel")
 
@@ -1861,7 +2123,7 @@ def delete_section(section_id):
 
 def add_new_content_block_faculty(section_id, faculty_id):
     while True:
-        print(f"\n===== Add New Content Block for Section (ID: {section_id}) =====")
+        print(f"\nAdd New Content Block for Section (ID: {section_id})")
 
         content_block_id = input("Enter Unique Content Block ID: ")
 
@@ -1923,7 +2185,7 @@ def add_new_content_block_faculty(section_id, faculty_id):
 
 def modify_content_block_faculty(section_id, faculty_id):
     while True:
-        print("\n===== Modify Content Block =====")
+        print("\nModify Content Block")
 
         content_block_id = input("Enter Content Block ID: ")
 
@@ -1977,7 +2239,7 @@ def modify_content_block_faculty(section_id, faculty_id):
 
 def hide_content_block_faculty(section_id, content_block_id):
     while True:
-        print("\n===== Hide Content Block =====")
+        print("\nHide Content Block")
 
         print("\n1. Save")
         print("2. Cancel")
@@ -2018,7 +2280,7 @@ def hide_content_block_faculty(section_id, content_block_id):
 
 def delete_content_block_faculty(section_id, content_block_id):
     while True:
-        print("\n===== Delete Content Block =====")
+        print("\nDelete Content Block")
 
         print("\n1. Save")
         print("2. Cancel")
@@ -2054,7 +2316,7 @@ def delete_content_block_faculty(section_id, content_block_id):
 
 def hide_activity_faculty(section_id, content_block_id):
     while True:
-        print("\n===== Hide Activity =====")
+        print("\nHide Activity")
 
         activity_id = input("Enter the unique Activity ID: ")
 
@@ -2111,7 +2373,7 @@ def hide_activity_faculty(section_id, content_block_id):
 
 def delete_activity_faculty(section_id, content_block_id):
     while True:
-        print("\n===== Delete Activity =====")
+        print("\nDelete Activity")
 
         activity_id = input("Enter the unique Activity ID: ")
 
@@ -2168,7 +2430,7 @@ def delete_activity_faculty(section_id, content_block_id):
 
 def add_text_faculty(content_block_id, section_id, faculty_id):
     while True:
-        print("\n===== Add Text to Content Block =====")
+        print("\n Add Text to Content Block")
 
         text_content = input("Enter the text: ")
 
@@ -2208,7 +2470,7 @@ def add_text_faculty(content_block_id, section_id, faculty_id):
 
 def add_picture_faculty(content_block_id, section_id, faculty_id):
     while True:
-        print("\n===== Add Picture to Content Block =====")
+        print("\nAdd Picture to Content Block")
 
         picture_content = input("Enter the picture file path or URL: ")
 
@@ -2247,7 +2509,7 @@ def add_picture_faculty(content_block_id, section_id, faculty_id):
 
 def add_activity_faculty(content_block_id, section_id, faculty_id):
     while True:
-        print("\n===== Add Activity =====")
+        print("\nAdd Activity")
 
         activity_id = input("Enter Unique Activity ID: ")
 
@@ -2316,7 +2578,7 @@ def go_to_evaluation_course(faculty_id):
                 "SELECT textbook_id FROM Course WHERE course_id = %s", (course_id,)
             )
             textbook_id = cursor.fetchone()[0]
-            print(f"\n===== Evaluation Course Menu (Course ID: {course_id}) =====")
+            print(f"\nEvaluation Course Menu (Course ID: {course_id})")
             print("1. Add New Chapter")
             print("2. Modify Chapters")
             print("3. Go Back")
@@ -2340,7 +2602,7 @@ def go_to_evaluation_course(faculty_id):
 
 def view_courses(faculty_id):
     while True:
-        print(f"\n===== Assigned Courses for Faculty ID: {faculty_id} =====")
+        print(f"\nAssigned Courses for Faculty ID: {faculty_id}")
 
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -2373,7 +2635,7 @@ def view_courses(faculty_id):
 
 def change_password(faculty_id):
     while True:
-        print("\n===== Change Password =====")
+        print("\nChange Password")
 
         current_password = input("Enter Current Password: ")
         new_password = input("Enter New Password: ")
@@ -2425,7 +2687,7 @@ def change_password(faculty_id):
 
 def ta_login():
     while True:
-        print("\n===== TA Login =====")
+        print("\nTA Login")
 
         user_id = input("Enter User ID: ")
         password = input("Enter Password: ")
@@ -2473,7 +2735,7 @@ def ta_login():
 
 def ta_landing_page(ta_id):
     while True:
-        print("\n===== TA Landing Page =====")
+        print("\nTA Landing Page")
         print("1. Go to Active Course")
         print("2. View Courses")
         print("3. Change Password")
@@ -2510,7 +2772,7 @@ def ta_go_to_active_course(ta_id):
         )
         textbook_id = cursor.fetchone()[0]
 
-        print("\n===== TA: Active Course Menu =====")
+        print("\nTA: Active Course Menu")
         print("1. View Students")
         print("2. Add New Chapter")
         print("3. Modify Chapters")
@@ -2572,7 +2834,7 @@ def ta_view_courses(ta_id):
 
 def ta_change_password(ta_id):
     while True:
-        print("\n===== Change Password =====")
+        print("\nChange Password")
         current_password = input("Enter current password: ")
         new_password = input("Enter new password: ")
         confirm_new_password = input("Confirm new password: ")
@@ -2673,7 +2935,7 @@ def ta_view_students(ta_id):
 
 
 def ta_add_new_chapter(ta_id, textbook_id):
-    print("\n===== Add New Chapter =====")
+    print("\nAdd New Chapter")
     chapter_id = input("Enter Unique Chapter ID: ")
     chapter_title = input("Enter Chapter Title: ")
 
@@ -2717,7 +2979,7 @@ def ta_add_new_chapter(ta_id, textbook_id):
 
 
 def ta_add_new_section(chapter_id, textbook_id, ta_id):
-    print("\n===== Add New Section =====")
+    print("\nAdd New Section")
     section_number = input("Enter Section Number: ")
     section_title = input("Enter Section Title: ")
 
@@ -2780,7 +3042,7 @@ def ta_add_new_section(chapter_id, textbook_id, ta_id):
 
 
 def ta_modify_chapter(textbook_id, ta_id):
-    print("\n===== Modify Chapter =====")
+    print("\nModify Chapter")
     chapter_id = input("Enter Unique Chapter ID: ")
 
     conn = get_db_connection()
@@ -2822,7 +3084,7 @@ def ta_modify_chapter(textbook_id, ta_id):
 
 def ta_add_new_content_block(chapter_id, section_id, ta_id, textbook_id):
     while True:
-        print("\n===== Add New Content Block =====")
+        print("\nAdd New Content Block")
         content_block_id = input("Enter Content Block ID: ")
 
         conn = get_db_connection()
@@ -2884,7 +3146,7 @@ def ta_add_new_content_block(chapter_id, section_id, ta_id, textbook_id):
 
 def ta_hide_activity(content_block_id, section_id):
     while True:
-        print("\n===== Hide Activity =====")
+        print("\nHide Activity")
 
         activity_id = input("Enter the unique Activity ID: ")
 
@@ -2941,7 +3203,7 @@ def ta_hide_activity(content_block_id, section_id):
 
 def ta_add_text(content_block_id, section_id):
     while True:
-        print("\n===== Add Text to Content Block =====")
+        print("\nAdd Text to Content Block")
         text_input = input("Enter the text to add: ")
 
         print("\n1. Add")
@@ -2978,7 +3240,7 @@ def ta_add_text(content_block_id, section_id):
 
 def ta_add_picture(content_block_id, section_id):
     while True:
-        print("\n===== Add Picture to Content Block =====")
+        print("\nAdd Picture to Content Block")
 
         picture_path = input("Enter the file path or URL of the picture: ")
 
@@ -3016,7 +3278,7 @@ def ta_add_picture(content_block_id, section_id):
 
 def ta_add_new_activity(content_block_id, section_id):
     while True:
-        print("\n===== Add Activity =====")
+        print("\nAdd Activity")
 
         activity_id = input("Enter the Unique Activity ID: ")
 
@@ -3067,7 +3329,7 @@ def ta_add_new_activity(content_block_id, section_id):
 
 def ta_add_question(activity_id, content_block_id, section_id):
     while True:
-        print("\n===== Add Question =====")
+        print("\nAdd Question")
 
         question_id = input("Enter Question ID: ")
         question_text = input("Enter Question Text: ")
@@ -3136,7 +3398,7 @@ def ta_add_question(activity_id, content_block_id, section_id):
 
 def ta_modify_section(chapter_id, textbook_id, ta_id):
     while True:
-        print("\n===== Modify Section =====")
+        print("\nModify Section")
 
         section_number = input("Enter Section Number: ")
 
@@ -3200,7 +3462,7 @@ def ta_modify_section(chapter_id, textbook_id, ta_id):
 
 def ta_modify_content_block(section_id, ta_id):
     while True:
-        print("\n===== Modify Content Block =====")
+        print("\nModify Content Block")
 
         content_block_id = input("Enter Content Block ID: ")
 
@@ -3266,7 +3528,7 @@ def ta_modify_content_block(section_id, ta_id):
 
 def ta_delete_content_block(section_id):
     while True:
-        print("\n===== Delete Content Block =====")
+        print("\nDelete Content Block")
 
         content_block_id = input("Enter Content Block ID: ")
 
@@ -3330,7 +3592,7 @@ def ta_delete_content_block(section_id):
 
 def ta_hide_content_block(section_id):
     while True:
-        print("\n===== Hide Content Block =====")
+        print("\nHide Content Block")
 
         content_block_id = input("Enter Content Block ID: ")
 
@@ -3391,7 +3653,7 @@ def ta_hide_content_block(section_id):
 
 def student_login():
     while True:
-        print("\n===== Student Login Menu =====")
+        print("\nStudent Login Menu")
         print("1. Enroll in a Course")
         print("2. Sign-In")
         print("3. Go Back")
@@ -3414,7 +3676,7 @@ def student_login():
 
 def enroll_in_course():
     while True:
-        print("\n===== Student Enrollment =====")
+        print("\nStudent Enrollment")
         first_name = input("Enter First Name: ")
         last_name = input("Enter Last Name: ")
         email = input("Enter Email: ")
@@ -3510,7 +3772,7 @@ def enroll_in_course():
 
 def student_sign_in():
     while True:
-        print("\n===== Student Sign-In =====")
+        print("\nStudent Sign-In")
 
         user_id = input("Enter User ID: ")
         password = input("Enter Password: ")
@@ -3557,7 +3819,7 @@ def student_sign_in():
 
 def student_landing_page(student_id):
     while True:
-        print("\n===== Student Landing Page =====")
+        print("\nStudent Landing Page")
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute(
@@ -3611,7 +3873,7 @@ def student_landing_page(student_id):
 
 def view_section(student_id):
     while True:
-        print("\n===== View Section =====")
+        print("\nView Section")
         textbook_id = input("Enter Textbook ID: ")
         chapter_id = input("Enter Chapter ID: ")
         section_num = input("Enter Section Number: ")
@@ -3668,7 +3930,7 @@ def view_block(textbook_id, chapter_id, section_id, student_id):
             return
 
         for block_id, block_type, content in blocks:
-            print(f"\n===== Viewing Block {block_id} =====")
+            print(f"\nViewing Block {block_id}")
             if block_type == 'text' or block_type == 'picture':
 
                 print(f"Content: {content}")
@@ -3791,7 +4053,7 @@ def view_participation_activity_point(student_id):
 
         if result:
             participation_points = result[0]
-            print(f"\n===== Current Participation Points =====")
+            print(f"\nCurrent Participation Points")
             print(
                 f"Your current total participation activity points: {participation_points}"
             )

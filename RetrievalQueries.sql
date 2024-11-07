@@ -17,7 +17,7 @@ u.role as 'Role'
 FROM user u
 JOIN teachingassistant t
 ON (t.faculty_id = u.user_id OR t.teaching_assistant_id = u.user_id)
-WHERE t.course_idteachingassistant IS NOT NULL
+WHERE t.course_id IS NOT NULL
 ORDER BY t.course_id ASC, u.role ASC;
 
 
