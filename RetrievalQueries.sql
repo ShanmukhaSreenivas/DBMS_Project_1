@@ -96,6 +96,7 @@ AND e.textbook_id = '101';
 
 -- 6. For Q2 of Activity0, print the incorrect answers for that question and their corresponding explanations.
 SELECT 
+s.textbook_id AS 'Textbook ID',
 q.question_id AS 'Question ID',
 q.question_text AS 'Question Text',
 (CASE 
@@ -138,6 +139,9 @@ JOIN Activity a
 ON q.activity_id = a.activity_id 
 AND q.section_id = a.section_id 
 AND q.content_block_id = a.content_block_id
+JOIN section s
+ON s.section_id = a.section_id
+
 WHERE 1=1
 AND q.question_id = 'Q2' AND q.activity_id = 'ACT0';
 
