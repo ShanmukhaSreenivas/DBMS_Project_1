@@ -1,4 +1,3 @@
-DROP DATABASE proj1;
 CREATE DATABASE proj1;
 USE proj1;
 
@@ -170,42 +169,244 @@ CREATE TABLE Score (
 );
 
 
+USE proj1
+-- Stored procedure for hiding a chapter
 
--- -- 1st query
--- -- Replace 'TextbookID' with the ID of a text book
--- SELECT COUNT(*) AS NumberOfSections
--- FROM section
--- WHERE chapter_id = (
---     SELECT chapter_id
---     FROM chapter
---     WHERE textbook_id = [TextbookID] AND chapter_number = 1
--- );
+DELIMITER //
 
--- -- 2nd query:
--- (SELECT 
--- 	Course.title AS CourseTitle,
--- 	CONCAT(User.first_name, ' ', User.last_name) AS UserName,
--- 	User.role AS UserRole 
--- FROM Faculty
--- JOIN Course ON Faculty.faculty_id = Course.faculty_id
--- JOIN User ON Faculty.faculty_id = User.user_id)
+CREATE PROCEDURE hide_chapter(IN p_chapter_id VARCHAR(100), IN p_textbook_id INT)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        SELECT 'Failed: An error occurred while hiding the chapter.' AS ErrorMessage;
+    END;
 
--- UNION
+    START TRANSACTION;
+    UPDATE Chapter
+    SET hidden = 'yes'
+    WHERE chapter_id = p_chapter_id AND textbook_id = p_textbook_id;
+    
+    COMMIT;
+    SELECT CONCAT('Success: Chapter ', p_chapter_id, ' has been hidden.') AS SuccessMessage;
+END //
 
--- (SELECT 
---     Course.title AS CourseTitle,
---     CONCAT(User.first_name, ' ', User.last_name) AS UserName,
---     User.role AS UserRole 
--- FROM TeachingAssistant
--- JOIN Course ON TeachingAssistant.course_id = Course.course_id
--- JOIN User ON TeachingAssistant.user_id = User.user_id);
+DELIMITER ;
 
--- INSERT INTO User (user_id, first_name, last_name, email, password, role)
--- VALUES ('blbl2411', 'blah', 'blah2', 'blah@example.com', 'blah', 'admin');
 
--- SELECT * FROM User;
+-- Stored procedure for deleting a chapter
+
+DELIMITER //
+
+CREATE PROCEDURE delete_chapter(IN p_chapter_id VARCHAR(100), IN p_textbook_id INT)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        SELECT 'Failed: An error occurred while deleting the chapter.' AS ErrorMessage;
+    END;
+
+    START TRANSACTION;
+    DELETE FROM Chapter
+    WHERE chapter_id = p_chapter_id AND textbook_id = p_textbook_id;
+    
+    COMMIT;
+    SELECT CONCAT('Success: Chapter ', p_chapter_id, ' has been deleted.') AS SuccessMessage;
+END //
+
+DELIMITER ;
+
+-- Stored procedure for hiding a section
+
+DELIMITER //
+
+CREATE PROCEDURE hide_section(IN p_section_id INT)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        SELECT 'Failed: An error occurred while hiding the section.' AS ErrorMessage;
+    END;
+
+    START TRANSACTION;
+    UPDATE Section
+    SET hidden = 'yes'
+    WHERE section_id = p_section_id;
+
+    COMMIT;
+    SELECT CONCAT('Success: Section ', p_section_id, ' has been hidden.') AS SuccessMessage;
+END //
+
+DELIMITER ;
+
+
+-- Stored procedure for deleting a section
+
+DELIMITER //
+
+CREATE PROCEDURE delete_section(IN p_section_id INT)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        SELECT 'Failed: An error occurred while deleting the section.' AS ErrorMessage;
+    END;
+
+    START TRANSACTION;
+    DELETE FROM Section
+    WHERE section_id = p_section_id;
+
+    COMMIT;
+    SELECT CONCAT('Success: Section ', p_section_id, ' has been deleted.') AS SuccessMessage;
+END //
+
+DELIMITER ;
+
+
+
+USE proj1
+-- Automatically Hide All Sections When a Chapter is Hidden
+
+DELIMITER //
+
+CREATE TRIGGER hide_sections_after_chapter_hidden
+AFTER UPDATE ON Chapter
+FOR EACH ROW
+BEGIN
+    IF NEW.hidden = 'yes' THEN
+        UPDATE Section SET hidden = 'yes' WHERE chapter_id = NEW.chapter_id;
+    END IF;
+END //
+
+DELIMITER ;
+
+-- Automatically Delete Related Sections When a Chapter is Deleted
+DELIMITER //
+
+CREATE TRIGGER delete_sections_before_chapter
+BEFORE DELETE ON Chapter
+FOR EACH ROW
+BEGIN
+    DELETE FROM Section WHERE chapter_id = OLD.chapter_id;
+END //
+
+DELIMITER ;
+
+-- Validation for chapter_id Format
+DELIMITER //
+
+CREATE TRIGGER validate_chapter_id
+BEFORE INSERT ON Chapter
+FOR EACH ROW
+BEGIN
+    IF NEW.chapter_id NOT REGEXP '^chap[0-9][1-9]$' THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Error: chapter_id must be in the format chap[0-9][1-9]';
+    END IF;
+END //
+
+DELIMITER ;
+
+-- Validation for section_number Format
+
+DELIMITER //
+
+CREATE TRIGGER validate_section_number
+BEFORE INSERT ON Section
+FOR EACH ROW
+BEGIN
+    IF NEW.section_number NOT REGEXP '^sec[0-9][1-9]$' THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Error: section_number must be in the format sec[0-9][1-9]';
+    END IF;
+END //
+
+DELIMITER ;
+
+-- Validation for content_block_id Format
+DELIMITER //
+
+CREATE TRIGGER validate_content_block_id
+BEFORE INSERT ON ContentBlock
+FOR EACH ROW
+BEGIN
+    IF NEW.content_block_id NOT REGEXP '^block[0-9][1-9]$' THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Error: content_block_id must be in the format block[0-9][1-9]';
+    END IF;
+END //
+
+DELIMITER ;
+
+
+
+-- User Authentication
+
+DELIMITER //
+
+CREATE TRIGGER check_user_id_format
+BEFORE INSERT ON User
+FOR EACH ROW
+BEGIN
+    DECLARE expected_user_id VARCHAR(50);
+    DECLARE year_part CHAR(2);
+    DECLARE month_part CHAR(2);
+
+    -- Get the last 2 digits of the current year and the month in 2-digit format
+    SET year_part = RIGHT(YEAR(CURDATE()), 2);
+    SET month_part = LPAD(MONTH(CURDATE()), 2, '0');
+
+    -- Concatenate to form the expected user_id based on first_name, last_name, year, and month
+    SET expected_user_id = CONCAT(
+        LEFT(NEW.first_name, 2),
+        LEFT(NEW.last_name, 2),
+        year_part,
+        month_part
+    );
+
+    -- Check if the provided user_id matches the expected format
+    IF NEW.user_id != expected_user_id THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Error: user_id must follow the format: first 2 letters of first_name + last_name + last 2 digits of year + month';
+    END IF;
+END //
+
+DELIMITER ;
+
+
+-- Notification Trigger
+
+DELIMITER //
+
+CREATE TRIGGER score_update_notification
+AFTER INSERT ON Score
+FOR EACH ROW
+BEGIN
+    INSERT INTO Notification (message, user_id, status, timestamp)
+    VALUES (
+        CONCAT('Score has been updated with score_id ', NEW.score_id),
+        NEW.student_id,
+        'unread',
+        NOW()
+    );
+END //
+
+CREATE TRIGGER score_change_notification
+AFTER UPDATE ON Score
+FOR EACH ROW
+BEGIN
+    INSERT INTO Notification (message, user_id, status, timestamp)
+    VALUES (
+        CONCAT('Score has been updated with score_id ', NEW.score_id),
+        NEW.student_id,
+        'unread',
+        NOW()
+    );
+END //
+
+DELIMITER ;
 
 
 INSERT INTO User (user_id, first_name, last_name, email, password, role)
-VALUES ('blbl2411', 'blah', 'blah2', 'blah@example.com', 'blah', 'admin');
+VALUES ('adad2411', 'admin', 'admin', 'admin@example.com', 'pass', 'admin');
 
